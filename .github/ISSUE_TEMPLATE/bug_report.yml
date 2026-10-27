@@ -1,0 +1,34 @@
+name: Bug report
+description: Something is broken or gives a wrong answer
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Include the command or request you ran and the full output.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: hyrag version
+      placeholder: "output of `hyrag --version`"
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Ingestion / loaders
+        - Chunking
+        - Indexing / retrieval
+        - Generation / citations
+        - Evaluation
+        - API / dashboard
+        - Docker / setup
