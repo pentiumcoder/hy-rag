@@ -1,0 +1,43 @@
+Support Escalation Matrix
+=========================
+
+How customer issues move from Support to Engineering, and how fast each plan must get a first response.
+
+Support tiers
+-------------
+
+Tier 1 (T1), Support Agents: first contact for every ticket. They answer how-to questions, check the status page and collect request IDs.
+
+Tier 2 (T2), Support Engineers: investigate account-specific problems using read-only production tools and logs.
+
+Tier 3 (T3), Engineering on-call: the on-call engineer of the owning team, paged through Beacon.
+
+First response targets
+----------------------
+
+Enterprise: 1 hour, 24 hours a day, 7 days a week.
+Growth: 8 business hours.
+Starter: 48 business hours.
+
+Business hours are 08:00 to 18:00 in the customer's home region, Monday to Friday.
+
+When to escalate to T3
+----------------------
+
+T2 escalates to the engineering on-call when any of these is true:
+- the customer reports possible data loss;
+- the same error is affecting more than one customer;
+- an Enterprise customer reports a P1 (production down, no workaround);
+- the issue needs a production change that Support's read-only tools cannot make.
+
+Escalations to T3 are made by paging the owning team in Beacon with the ticket link. Do not escalate in chat only.
+
+Enterprise accounts
+-------------------
+
+Every Enterprise account has a dedicated customer success manager (CSM). For any P1 ticket, T2 informs the CSM within 30 minutes, and the CSM owns customer communication until the issue is resolved.
+
+Closing tickets
+---------------
+
+Tickets are closed when the customer confirms the fix, or automatically 7 days after the last reply from Support if the customer does not respond.

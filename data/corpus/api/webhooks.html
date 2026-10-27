@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Webhooks</title>
+</head>
+<body>
+  <h1>Webhooks</h1>
+  <p>Webhooks notify your systems when something happens in your Northwind account. Configure endpoints under Settings → Webhooks; only Admins and Owners can manage them.</p>
+
+  <h2>Event types</h2>
+  <ul>
+    <li><code>ingest.completed</code>: a bulk import finished.</li>
+    <li><code>usage.threshold_reached</code>: the account crossed 80% or 100% of its included monthly events.</li>
+    <li><code>invoice.created</code>: a new invoice is available.</li>
+    <li><code>apikey.revoked</code>: an API key was revoked.</li>
+  </ul>
+
+  <h2>Verifying signatures</h2>
+  <p>Every delivery includes two headers:</p>
+  <ul>
+    <li><code>X-NW-Timestamp</code>: the Unix time at which the delivery was sent.</li>
+    <li><code>X-NW-Signature</code>: an HMAC-SHA256 of the timestamp, a period, and the raw request body, keyed with your endpoint's signing secret, hex-encoded.</li>
+  </ul>
+  <p>Compute the HMAC over the raw bytes before parsing the JSON, compare with a constant-time comparison, and reject deliveries whose timestamp is more than 5 minutes old to prevent replay attacks.</p>
+
+  <h2>Delivery and retries</h2>
+  <p>Your endpoint must return a 2xx status within 10 seconds. Any other result, including a timeout, counts as a failure. Failed deliveries are retried up to 8 times with exponential backoff, spread over roughly 24 hours. Deliveries can arrive more than once and out of order; use the <code>id</code> field to de-duplicate.</p>
+  <p>If every delivery to an endpoint fails for 3 consecutive days, the endpoint is disabled and the account Owners are emailed. Re-enable it from the dashboard after fixing the problem.</p>
+
+  <h2>Testing</h2>
+  <p>Use the "Send test event" button in the dashboard to deliver a sample <code>ingest.completed</code> event. Test deliveries are signed exactly like real ones.</p>
+</body>
+</html>
