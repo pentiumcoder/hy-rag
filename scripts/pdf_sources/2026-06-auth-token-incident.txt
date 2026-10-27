@@ -1,0 +1,34 @@
+Postmortem: Token Expiry Errors of 2026-06-09
+
+1. Summary
+
+On 2026-06-09 between 14:05 and 14:52 UTC (47 minutes), about 9% of API requests across all regions failed with NW-4031 TOKEN_EXPIRED. The incident was declared SEV2. Most affected requests came from long-running jobs using Python SDK versions older than 2.3.
+
+2. Impact
+
+- About 9% of API requests failed during the incident window.
+- Customers using API keys directly, without bearer tokens, were not affected.
+- No data was lost; failed requests could be retried.
+
+3. Root cause
+
+A configuration migration that moved keystone settings to the new config service contained a typo: keystone.token_ttl_minutes was set to 6 instead of 60. Access tokens therefore expired after 6 minutes. Python SDK versions before 2.3 did not refresh tokens automatically, so jobs running longer than 6 minutes started failing. The config service accepted the value because the key had no lower bound.
+
+4. Detection
+
+Support received the first customer report at 14:18 UTC. The gateway error-rate alert did not fire, because the overall 4xx rate stayed below its threshold. Detection relied on customer reports.
+
+5. Resolution
+
+At 14:44 UTC the Identity on-call engineer found the wrong value and restored keystone.token_ttl_minutes to 60. Errors stopped once newly issued tokens propagated, at 14:52 UTC.
+
+6. Action items
+
+- Add bounds of 15 to 1440 minutes to keystone.token_ttl_minutes in config validation. Owner: Identity. Status: done.
+- Add a dedicated alert on the rate of NW-4031 responses. Owner: Identity. Status: done.
+- Include the authentication error rate in canary analysis for keystone. Owner: Developer Productivity. Status: in progress.
+- Encourage customers to upgrade to Python SDK 2.3 or later, which refreshes tokens automatically. Owner: Developer Relations. Status: done.
+
+7. Lessons learned
+
+Config migrations need the same validation and review as config changes. Customer-visible error rates should be alerted on per error code, not only in aggregate.

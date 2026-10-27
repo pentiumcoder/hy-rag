@@ -1,0 +1,34 @@
+Leave FAQ
+=========
+
+Answers to the questions People Operations hears most often about time off. The PTO Policy is the authoritative source; this FAQ only summarizes it.
+
+How much PTO do I get?
+----------------------
+
+Full-time employees receive 25 days of paid time off (PTO) per calendar year, in addition to the public holidays of their country of employment. PTO accrues monthly, at roughly 2.08 days per month. Part-time employees accrue PTO in proportion to their contracted hours.
+
+Can I carry unused days into next year?
+---------------------------------------
+
+Up to 5 unused PTO days can be carried over into the next calendar year. Carried-over days must be used by March 31 or they expire. Unused days beyond the 5-day carryover limit are not paid out, except where local law requires it.
+
+Can I take PTO during my on-call week?
+--------------------------------------
+
+Yes, but only after you have arranged a swap with a teammate and recorded it in Beacon. Your manager cannot approve the request until the swap shows up there.
+
+Do public holidays count against my PTO?
+----------------------------------------
+
+No. Public holidays follow your country of employment and are in addition to your 25 days. If you work on a public holiday during an incident, you can take a replacement day within the next three months.
+
+What if I am sick?
+------------------
+
+Sick leave is separate from PTO: you have 10 paid sick days per year, and you need a doctor's note only for absences of 3 or more consecutive days.
+
+Where do I see my balance?
+--------------------------
+
+Your current PTO balance, including any carried-over days and their expiry date, is shown on the Time Off page in PeopleHub.
