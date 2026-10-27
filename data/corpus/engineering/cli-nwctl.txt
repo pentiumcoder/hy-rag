@@ -1,0 +1,52 @@
+nwctl Command Reference
+=======================
+
+nwctl is the internal command-line tool for operating Northwind services. Install it with the internal package manager and authenticate with "nwctl login --sso". Run "nwctl <command> --help" for every flag.
+
+Setup and diagnostics
+---------------------
+
+nwctl login --sso
+  Opens the Okta sign-in flow and stores a short-lived credential. Credentials expire after 12 hours.
+
+nwctl doctor
+  Checks your local setup: installed tools, VPN connection, credentials and kubeconfig. Prints a fix for every failed check. Run it first whenever another command fails.
+
+Services
+--------
+
+nwctl logs --service <name> --since <duration>
+  Streams logs for a service, for example: nwctl logs --service ingestd --since 15m
+
+nwctl scale <service> --replicas <n>
+  Changes the replica count of a service in the current region. Scaling ingestd above 24 replicas is rejected.
+
+nwctl restart --service <name>
+  Performs a rolling restart of all pods of a service.
+
+nwctl deploy --service <name> --version <release-id>
+  Deploys a release outside the release train. Requires a passing staging deploy at least 2 hours old.
+
+nwctl rollback --service <name> --to <release-id>
+  Rolls a service back to an earlier release.
+
+nwctl releases --service <name>
+  Lists recent release IDs for a service.
+
+Configuration
+-------------
+
+nwctl config get <key> --env <env>
+  Prints the current value of a configuration key, for example: nwctl config get ingest.max_batch_size --env prod
+
+nwctl config set <key> <value> --env <env> --ticket <CHG-id>
+  Changes a configuration value. In prod, the change waits for a second approver before it is applied. Values outside the allowed range in the Configuration Reference are rejected.
+
+Access and databases
+--------------------
+
+nwctl access request --role <role> --duration <duration> --reason <ticket>
+  Requests just-in-time production access. The maximum duration is 8h.
+
+nwctl db failover --cluster <name> --confirm
+  Starts a manual database failover. See the Postgres Failover runbook before using it.

@@ -1,0 +1,41 @@
+Engineering Glossary
+====================
+
+Terms and abbreviations used across Northwind engineering documents.
+
+Incidents and operations
+------------------------
+
+IC (Incident Commander): the person coordinating the response to a SEV1 incident. The IC does not fix the problem; they assign work, keep the timeline and handle communication.
+
+SEV1 to SEV4: incident severity levels, defined in the Incident Severity Levels policy. SEV1 is the most severe.
+
+Beacon: the paging and on-call scheduling tool.
+
+Change ticket (CHG): a ticket that records a planned production change, such as a config change or manual failover. Its ID looks like CHG-4821.
+
+Runbook: a step-by-step guide for responding to a specific alert.
+
+RTO (Recovery Time Objective): the maximum acceptable time to restore a service after a failure.
+
+RPO (Recovery Point Objective): the maximum acceptable amount of data loss, measured in time.
+
+Delivery
+--------
+
+Release train: the weekly scheduled production release, every Tuesday at 09:00 UTC.
+
+Canary: the first stage of a rollout, in which a new version receives 5% of traffic while its error rate and latency are compared with the current version.
+
+Hotfix: a production deploy outside the release train.
+
+Architecture
+------------
+
+Tier-1 service: a service whose outage blocks every customer. Currently nw-gateway, keystone and ledger. Changes need two review approvals.
+
+Consumer lag: the number of Kafka messages written to a topic but not yet processed by its consumers. For ingestion it is reported as the ingest_consumer_lag metric.
+
+Tenant: a single customer account. Event data in ClickHouse is sharded by tenant.
+
+DLQ (dead-letter queue): the events.dlq topic, where ingestd sends batches that still fail after all retries.

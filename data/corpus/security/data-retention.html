@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Data Retention and Deletion</title>
+</head>
+<body>
+  <h1>Data Retention and Deletion</h1>
+  <p>This document explains how long Northwind keeps each kind of data and how deletion requests are handled.</p>
+
+  <h2>Customer event data</h2>
+  <p>Event data is kept for the retention window of the customer's plan and then deleted automatically by a nightly job:</p>
+  <table>
+    <tr><th>Plan</th><th>Event retention</th></tr>
+    <tr><td>Starter</td><td>7 days</td></tr>
+    <tr><td>Growth</td><td>30 days</td></tr>
+    <tr><td>Enterprise</td><td>365 days</td></tr>
+  </table>
+  <p>When a customer upgrades, the longer window applies to data that has not yet been deleted. When a customer downgrades, data older than the new window is deleted at the start of the next billing period.</p>
+
+  <h2>Other data</h2>
+  <ul>
+    <li>Application logs: 90 days.</li>
+    <li>Audit logs, including <code>audit.breakglass</code>: 2 years.</li>
+    <li>Database backups: 35 days.</li>
+    <li>Invoices and billing records: 7 years, to meet tax obligations.</li>
+  </ul>
+
+  <h2>Deletion requests</h2>
+  <p>Customers can request deletion of all their data, or of the data of a specific end user, under GDPR and similar laws. Requests are submitted through the dashboard or to privacy@northwind.example.</p>
+  <p>Deletion from live systems is completed within 30 days of the request. Because backups are kept for 35 days, deleted data is fully purged from backups no later than 35 days after it is removed from live systems. Backups are never restored into production without re-applying all pending deletions.</p>
+
+  <h2>Account closure</h2>
+  <p>When an account is closed, its event data is deleted within 30 days. Billing records are retained for 7 years as described above.</p>
+</body>
+</html>
