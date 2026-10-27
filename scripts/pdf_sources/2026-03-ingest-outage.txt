@@ -1,0 +1,36 @@
+Postmortem: Ingest Outage of 2026-03-18
+
+1. Summary
+
+On 2026-03-18 between 09:41 and 11:55 UTC (2 hours 14 minutes), event ingestion in us-east failed for 38% of customers, who received NW-5031 INGEST_BACKPRESSURE errors. The incident was declared SEV1. No customer data was lost: all accepted events were buffered in the events.raw Kafka topic and ingested once service was restored.
+
+2. Impact
+
+- 38% of customers in us-east received NW-5031 errors for part or all of the incident.
+- Consumer lag peaked at 4.2 million messages.
+- Dashboards for affected customers showed data up to 2 hours late.
+- Two Enterprise customers opened P1 tickets.
+
+3. Root cause
+
+At 09:38 UTC an operator raised ingest.max_batch_size from 500 to 20000 with nwctl config set, to help a large customer import historical data faster. At the time, config validation did not enforce an upper bound on this key. With batches 40 times larger than usual, ingestd pods exceeded their 2Gi memory limit and were OOMKilled. The pods restarted, picked up the same oversized batches, and crashed again. With most consumers in a crash loop, lag grew quickly and the gateway began shedding load.
+
+4. Detection
+
+The IngestConsumerLagHigh alert fired at 09:52 UTC, 11 minutes after impact began. At the time the alert threshold was 100000 messages, which delayed detection.
+
+5. Resolution
+
+At 10:31 UTC the on-call engineer identified the config change from the audit log and reverted ingest.max_batch_size to 500. To drain the backlog faster, ingestd was scaled from 6 to 18 replicas. Lag returned to normal at 11:55 UTC and the incident was resolved. ingestd was scaled back to 6 replicas the next day.
+
+6. Action items
+
+- Enforce a hard upper limit of 5000 on ingest.max_batch_size in config validation. Owner: Data Platform. Status: done in release v4.12.
+- Raise the ingestd memory limit from 2Gi to 4Gi. Owner: Data Platform. Status: done.
+- Require a change ticket and a second approver for every production config change made with nwctl config set. Owner: Developer Productivity. Status: done in April 2026.
+- Lower the IngestConsumerLagHigh threshold from 100000 to 50000 messages. Owner: Data Platform. Status: done.
+- Add a bulk historical import path that does not share capacity with live ingestion. Owner: Data Platform. Status: planned for Q4 2026.
+
+7. Lessons learned
+
+A single unvalidated configuration value was able to take down a tier-2 service in seconds. Every tunable that affects memory or throughput must have validated bounds, and production config changes need the same review as code.

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Release Process</title>
+  <style>body { font-family: sans-serif; max-width: 48rem; margin: auto; }</style>
+</head>
+<body>
+  <nav><a href="/wiki">Wiki home</a> / Engineering / Release Process</nav>
+  <h1>Release Process</h1>
+  <p>This page describes how code reaches production through the weekly release train, how canary analysis works, and how to roll back.</p>
+
+  <h2>The weekly release train</h2>
+  <p>The release train departs every Tuesday at 09:00 UTC. Every change merged to <code>main</code> and green in staging by Monday 18:00 UTC is included. The release captain for the week, rotated across teams, cuts the release branch and posts the change list in <code>#releases</code>.</p>
+  <p>Production deploys are frozen on Fridays after 14:00 UTC and all weekend. The only exception is a fix for an active SEV1 or SEV2 incident, which needs explicit approval from the incident commander. A company-wide release freeze also runs for the last two weeks of December.</p>
+
+  <h2>Canary analysis</h2>
+  <p>Each service is rolled out in three stages:</p>
+  <ol>
+    <li>Canary: 5% of traffic for 30 minutes.</li>
+    <li>25% of traffic for 30 minutes.</li>
+    <li>100% of traffic.</li>
+  </ol>
+  <p>Automated canary analysis compares the new version with the current one. A stage fails, and the rollout is stopped and reverted automatically, if either condition holds:</p>
+  <table>
+    <tr><th>Signal</th><th>Rollback threshold</th></tr>
+    <tr><td>5xx error rate</td><td>above 1% of requests</td></tr>
+    <tr><td>p99 latency</td><td>more than 20% higher than the current version</td></tr>
+  </table>
+
+  <h2>Rolling back</h2>
+  <p>To roll back a service manually, run:</p>
+  <pre>nwctl rollback --service &lt;service&gt; --to &lt;release-id&gt;</pre>
+  <p>Release IDs have the form <code>rel-YYYYMMDD-N</code> and are listed with <code>nwctl releases --service &lt;service&gt;</code>. A rollback does not revert database migrations; migrations must be backwards compatible with the previous release for exactly this reason.</p>
+
+  <h2>Hotfixes</h2>
+  <p>A hotfix is any production deploy outside the train. Hotfixes need a pull request with the <code>hotfix</code> label, the usual review approvals, and a passing staging deploy. They still go through canary analysis, but the stages are shortened to 10 minutes each.</p>
+
+  <footer>Owned by the Developer Productivity team.</footer>
+</body>
+</html>

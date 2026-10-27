@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Access Control Policy</title>
+</head>
+<body>
+  <h1>Access Control Policy</h1>
+  <p>This policy covers how customers control access to their Northwind accounts and how Northwind employees access production systems.</p>
+
+  <h2>Customer roles</h2>
+  <p>Every member of a customer account has exactly one role:</p>
+  <ul>
+    <li><strong>Viewer</strong>: can view dashboards and saved queries.</li>
+    <li><strong>Analyst</strong>: everything a Viewer can do, plus running ad-hoc queries and creating dashboards.</li>
+    <li><strong>Admin</strong>: everything an Analyst can do, plus managing API keys, members and webhooks.</li>
+    <li><strong>Owner</strong>: everything an Admin can do, plus billing and deleting the account. Each account has at least one Owner.</li>
+  </ul>
+  <p>Enterprise customers can enforce single sign-on with SAML and map identity-provider groups to roles.</p>
+
+  <h2>Employee authentication</h2>
+  <p>Employees sign in to all internal tools through Okta. Multi-factor authentication is mandatory, and access to production systems requires a hardware security key (YubiKey); SMS codes are not accepted.</p>
+
+  <h2>Production access</h2>
+  <p>No employee has standing access to production. Access is granted just in time:</p>
+  <pre>nwctl access request --role prod-read --duration 4h --reason "INC-1234"</pre>
+  <p>Requests are approved by the on-call lead of the owning team. The maximum duration is 8 hours; access then expires automatically. The <code>prod-write</code> role additionally requires an open incident or change ticket.</p>
+
+  <h2>Break-glass access</h2>
+  <p>If Okta or the access system itself is down, the break-glass account can be used. Using it requires approval from two members of the Security team. Every use is logged to the <code>audit.breakglass</code> stream, triggers a SEV3 ticket automatically, and is reviewed by Security within 24 hours.</p>
+
+  <h2>Access reviews</h2>
+  <p>Managers review their team's group memberships every quarter. Access for employees who leave Northwind is removed within 4 hours of their departure being recorded in PeopleHub.</p>
+</body>
+</html>
