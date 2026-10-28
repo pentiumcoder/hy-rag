@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hyrag"
-version = "0.1.0"
+version = "0.2.0"
 description = "Production-style RAG over internal docs with hybrid BM25 + dense retrieval, reranking and verified citations."
 readme = "README.md"
 license = { text = "MIT" }
@@ -27,6 +27,9 @@ dependencies = [
     "numpy>=1.26",
     "typer>=0.12",
     "rich>=13.7",
+    "fastembed>=0.5",
+    "chromadb>=1.0",
+    "rank-bm25>=0.2.2",
 ]
 
 [project.optional-dependencies]
@@ -38,6 +41,7 @@ dev = [
     "pre-commit>=3.7",
     "fpdf2>=2.7",
 ]
+openai = ["openai>=1.40"]
 
 [project.scripts]
 hyrag = "hyrag.cli:app"
@@ -67,13 +71,16 @@ warn_unreachable = true
 pretty = true
 
 [[tool.mypy.overrides]]
-module = ["langchain_text_splitters.*", "pypdf.*"]
+module = ["langchain_text_splitters.*", "pypdf.*", "rank_bm25.*", "openai.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra --strict-markers"
+markers = [
+    "models: needs the real local models (downloads about 150 MB); run with HYRAG_TEST_MODELS=1",
+]
 
 [tool.coverage.run]
 source = ["hyrag"]

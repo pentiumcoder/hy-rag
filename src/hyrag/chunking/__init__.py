@@ -7,7 +7,7 @@ from hyrag.chunking.fixed import FixedSizeChunker
 from hyrag.chunking.recursive import RecursiveChunker
 from hyrag.chunking.semantic import SemanticChunker
 from hyrag.config import Settings, get_settings
-from hyrag.embeddings import Embedder, get_embedder
+from hyrag.embeddings import Embedder, embedder_from_settings
 from hyrag.models import ChunkStrategy
 
 __all__ = [
@@ -32,7 +32,7 @@ def get_chunker(
     if strategy is ChunkStrategy.RECURSIVE:
         return RecursiveChunker(settings.chunk_size, settings.chunk_overlap)
     return SemanticChunker(
-        embedder or get_embedder(settings.embedding_provider, settings.embedding_dim),
+        embedder or embedder_from_settings(settings),
         breakpoint_percentile=settings.semantic_breakpoint_percentile,
         min_chars=settings.semantic_min_chars,
         max_chars=settings.semantic_max_chars,

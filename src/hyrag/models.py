@@ -17,6 +17,12 @@ class ChunkStrategy(StrEnum):
     SEMANTIC = "semantic"
 
 
+class RetrievalMode(StrEnum):
+    DENSE = "dense"
+    SPARSE = "sparse"
+    HYBRID = "hybrid"
+
+
 def stable_hash(*parts: str, length: int = 16) -> str:
     """Deterministic short hash; Python's built-in hash() is salted per process."""
     digest = hashlib.sha256("\x1f".join(parts).encode("utf-8")).hexdigest()
@@ -91,3 +97,21 @@ class Chunk(BaseModel):
             section_heading=section_heading,
             page=page,
         )
+
+
+class ScoredChunk(BaseModel):
+    """A retrieved chunk plus every score that contributed to its final rank.
+
+    Ranks are 1-based; a ``None`` score means that stage did not see the chunk
+    (e.g. ``sparse_*`` is ``None`` for a chunk only the dense retriever found).
+    """
+
+    chunk: Chunk
+    rank: int
+    score: float  # what the final order is sorted by: rerank score if reranked, else first stage
+    dense_score: float | None = None  # cosine similarity
+    dense_rank: int | None = None
+    sparse_score: float | None = None  # BM25
+    sparse_rank: int | None = None
+    rrf_score: float | None = None
+    rerank_score: float | None = None  # cross-encoder logit

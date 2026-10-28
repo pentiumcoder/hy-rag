@@ -1,15 +1,26 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
 
-from hyrag.config import Settings
+from hyrag.config import Settings, get_settings
 from hyrag.embeddings import FakeEmbedder
-from hyrag.models import Document, Section
+from hyrag.models import Chunk, ChunkStrategy, Document, Section, stable_hash
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CORPUS_DIR = REPO_ROOT / "data" / "corpus"
+
+
+@pytest.fixture(autouse=True)
+def _offline_models(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Tests never download models: the fake embedder and no reranker unless a test opts in."""
+    monkeypatch.setenv("HYRAG_EMBEDDING_PROVIDER", "fake")
+    monkeypatch.setenv("HYRAG_RERANKER", "none")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 @pytest.fixture
@@ -53,3 +64,16 @@ def write_pdf(path: Path, title: str, lines: list[str]) -> Path:
         pdf.multi_cell(0, 6, line, new_x="LMARGIN", new_y="NEXT")
     pdf.output(str(path))
     return path
+
+
+def make_chunk(
+    text: str,
+    source: str = "test/doc.md",
+    index: int = 0,
+    strategy: ChunkStrategy = ChunkStrategy.RECURSIVE,
+    heading: str | None = "Section",
+    page: int | None = None,
+) -> Chunk:
+    doc = make_document([Section(text=text)], source=source)
+    doc.doc_id = stable_hash(source, length=12)
+    return Chunk.create(doc, strategy, index, text, section_heading=heading, page=page)
