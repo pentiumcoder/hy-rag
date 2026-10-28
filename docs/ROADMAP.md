@@ -18,13 +18,13 @@ hy-rag is built in five phases. Each phase ends with a stable interface that the
 - [x] Northwind Cloud sample corpus (26 docs, 4 formats)
 - [x] CI, tests and community files
 
-## Phase 2: Indexing and hybrid retrieval
+## Phase 2: Indexing and hybrid retrieval ✅
 
-- [ ] Local embeddings (`bge-small-en-v1.5` via fastembed) with a disk cache
-- [ ] ChromaDB vector store and BM25 index kept in sync by a single index manager
-- [ ] Near-duplicate filtering (cosine > 0.95) before insert
-- [ ] Dense and sparse retrieval, weighted Reciprocal Rank Fusion
-- [ ] Cross-encoder reranking (top 20 → top 5)
+- [x] Local embeddings (`bge-small-en-v1.5` via fastembed) with a disk cache
+- [x] ChromaDB vector store and BM25 index kept in sync by a single index manager
+- [x] Near-duplicate filtering (cosine > 0.95) before insert
+- [x] Dense and sparse retrieval, weighted Reciprocal Rank Fusion
+- [x] Cross-encoder reranking (top 20 → top 5)
 
 ## Phase 3: Generation and citations
 
