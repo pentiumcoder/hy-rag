@@ -29,6 +29,8 @@ htmlcov/
 # --- Data, indexes, model caches ---------------------------------------------
 data/raw/
 data/processed/
+data/index/
+data/cache/
 .chroma/
 .cache/
 *.pkl
