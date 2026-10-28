@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-28
+
+### Added
+
+- Local embeddings with `BAAI/bge-small-en-v1.5` through fastembed (the new default provider), an optional OpenAI embedder, and a SQLite embedding cache keyed by model and text.
+- ChromaDB vector store (one cosine collection per chunking strategy) and a persistent BM25 index with an identifier-aware tokenizer that keeps `dotted.keys`, `snake_case` and `NW-4012`-style codes whole while also indexing their parts.
+- `IndexManager`, the single writer for both indexes. It keeps a chunk manifest, applies incremental adds and removals, rebuilds when the embedder changes, and repairs BM25 and the manifest from Chroma if they drift.
+- Near-duplicate filtering before insert (cosine > 0.95 against the index and within the batch), with skipped chunks recorded in `dedup_report.json` and re-evaluated if their original disappears.
+- `HybridRetriever.retrieve(query, mode, k)` with dense, sparse and hybrid modes, weighted Reciprocal Rank Fusion and a cross-encoder reranker (`Xenova/ms-marco-MiniLM-L-6-v2`). Every result reports its dense, BM25, RRF and rerank scores.
+- `hyrag ingest` and `hyrag search` CLI commands.
+- Opt-in end-to-end tests with the real local models (`HYRAG_TEST_MODELS=1 pytest -m models`).
+- ADR-0002 on hybrid retrieval and fusion weights.
+
+### Changed
+
+- The default embedding provider is now `fastembed`. Tests and CI pin the deterministic fake embedder.
+
 ## [0.1.0] - 2026-10-27
 
 ### Added
@@ -20,5 +37,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - CI on Python 3.11 to 3.13 (ruff, mypy strict, pytest with coverage), pre-commit hooks, Dependabot and community health files.
 - ADR-0001 on the chunking strategies, and the project roadmap.
 
-[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pentiumcoder/hy-rag/releases/tag/v0.1.0
