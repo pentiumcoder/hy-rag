@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,8 +28,28 @@ class Settings(BaseSettings):
     semantic_min_chars: int = Field(default=200, ge=0)
     semantic_max_chars: int = Field(default=1200, ge=100)
 
-    embedding_provider: str = "fake"
-    embedding_dim: int = Field(default=256, ge=8)
+    # Embeddings. "fastembed" runs bge-small locally; "fake" is the deterministic test embedder.
+    embedding_provider: Literal["fastembed", "openai", "fake"] = "fastembed"
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    embedding_dim: int = Field(default=256, ge=8)  # only used by the fake embedder
+    embedding_cache: bool = True
+    model_cache_dir: Path = Path(".cache/models")
+
+    # Indexing: a new chunk is skipped if its cosine similarity to an indexed one exceeds this.
+    dedup_threshold: float = Field(default=0.95, gt=0, le=1)
+
+    # Retrieval: dense and sparse top-k, weighted RRF, then cross-encoder rerank to top_k.
+    dense_k: int = Field(default=10, ge=1)
+    sparse_k: int = Field(default=10, ge=1)
+    rrf_k: int = Field(default=60, ge=1)
+    # Equal weights by default: with rrf_k=60, rank scores differ by only ~15% across the top
+    # 10, so even 0.7/0.3 would stop a BM25-only hit from outranking any dense hit (ADR-0002).
+    dense_weight: float = Field(default=0.5, ge=0)
+    sparse_weight: float = Field(default=0.5, ge=0)
+    fusion_top_n: int = Field(default=20, ge=1)
+    reranker: Literal["cross-encoder", "none"] = "cross-encoder"
+    reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    top_k: int = Field(default=5, ge=1)
 
     @model_validator(mode="after")
     def _check_sizes(self) -> Settings:
@@ -36,6 +57,8 @@ class Settings(BaseSettings):
             raise ValueError("chunk_overlap must be smaller than chunk_size")
         if self.semantic_min_chars >= self.semantic_max_chars:
             raise ValueError("semantic_min_chars must be smaller than semantic_max_chars")
+        if self.dense_weight + self.sparse_weight == 0:
+            raise ValueError("dense_weight and sparse_weight cannot both be zero")
         return self
 
     @property
@@ -45,6 +68,14 @@ class Settings(BaseSettings):
     @property
     def processed_dir(self) -> Path:
         return self.data_dir / "processed"
+
+    @property
+    def index_dir(self) -> Path:
+        return self.data_dir / "index"
+
+    @property
+    def cache_dir(self) -> Path:
+        return self.data_dir / "cache"
 
 
 @lru_cache(maxsize=1)
