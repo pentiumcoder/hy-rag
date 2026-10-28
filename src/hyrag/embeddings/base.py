@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
@@ -36,3 +37,8 @@ def l2_normalize(matrix: NDArray[np.floating]) -> Matrix:
 def cosine_similarity_matrix(a: Matrix, b: Matrix) -> Matrix:
     """Pairwise cosine similarity for already-normalized rows."""
     return (a @ b.T).astype(np.float32)
+
+
+def quiet_model_downloads() -> None:
+    """Silence Hugging Face's Windows-only symlink warning; the cache still works without them."""
+    os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
