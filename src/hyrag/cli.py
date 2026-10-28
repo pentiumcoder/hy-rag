@@ -13,8 +13,11 @@ from rich.table import Table
 from hyrag import __version__
 from hyrag.chunking import get_chunker
 from hyrag.config import get_settings
+from hyrag.embeddings import embedder_from_settings
+from hyrag.index import Duplicate, IndexManager, IndexMismatchError
 from hyrag.ingestion import DocumentStore, load_corpus
-from hyrag.models import Chunk, ChunkStrategy, Document
+from hyrag.models import Chunk, ChunkStrategy, Document, RetrievalMode, ScoredChunk
+from hyrag.retrieval import HybridRetriever
 
 app = typer.Typer(
     help="Hybrid-search RAG over internal documentation.",
@@ -25,6 +28,9 @@ console = Console()
 
 CorpusOption = Annotated[
     Path | None, typer.Option("--corpus", "-c", help="Corpus directory (default: settings).")
+]
+StrategyOption = Annotated[
+    ChunkStrategy | None, typer.Option("--strategy", "-s", help="Chunking strategy.")
 ]
 
 
@@ -78,9 +84,7 @@ def _stats_row(strategy: str, chunks: list[Chunk]) -> list[str]:
 
 @app.command()
 def chunk(
-    strategy: Annotated[
-        ChunkStrategy | None, typer.Option("--strategy", "-s", help="Chunking strategy.")
-    ] = None,
+    strategy: StrategyOption = None,
     corpus: CorpusOption = None,
     show: Annotated[int, typer.Option(help="Print this many sample chunks.")] = 0,
     compare: Annotated[bool, typer.Option(help="Compare all strategies.")] = False,
@@ -103,6 +107,101 @@ def chunk(
         for c in chunks[:show]:
             console.rule(f"{strat.value} · {c.source} #{c.chunk_index} · {c.section_heading}")
             console.print(c.text, markup=False, highlight=False)
+
+
+@app.command()
+def ingest(
+    strategy: StrategyOption = None,
+    all_strategies: Annotated[
+        bool, typer.Option("--all", help="Index every chunking strategy.")
+    ] = False,
+    corpus: CorpusOption = None,
+) -> None:
+    """Load the corpus, then chunk, dedup, embed and index it (dense + BM25)."""
+    settings = get_settings()
+    store = DocumentStore(settings.data_dir)
+    report = store.ingest_directory(corpus or settings.corpus_dir)
+    docs = store.load_documents()
+    console.print(
+        f"documents: {len(docs)} ([green]added[/] {len(report.added)}, "
+        f"[yellow]updated[/] {len(report.updated)}, [dim]unchanged[/] {len(report.unchanged)})"
+    )
+    embedder = embedder_from_settings(settings)
+    strategies = list(ChunkStrategy) if all_strategies else [strategy or settings.chunk_strategy]
+
+    table = Table(title=f"Index sync ({embedder.name})")
+    for col in ("strategy", "added", "removed", "unchanged", "duplicates", "indexed"):
+        table.add_column(col, justify="left" if col == "strategy" else "right")
+    new_duplicates: list[Duplicate] = []
+    for strat in strategies:
+        result = IndexManager(settings, strat, embedder).sync(docs)
+        note = " (rebuilt)" if result.rebuilt else " (repaired)" if result.repaired else ""
+        table.add_row(
+            strat.value + note,
+            str(result.added),
+            str(result.removed),
+            str(result.unchanged),
+            str(result.total_duplicates),
+            str(result.total_chunks),
+        )
+        new_duplicates.extend(result.new_duplicates)
+    console.print(table)
+    for dup in new_duplicates[:10]:
+        console.print(
+            f"  [dim]skipped near-duplicate[/] {dup.source} ~ {dup.duplicate_of_source} "
+            f"(cosine {dup.similarity:.3f})"
+        )
+
+
+@app.command()
+def search(
+    query: Annotated[str, typer.Argument(help="The search query.")],
+    mode: Annotated[RetrievalMode, typer.Option("--mode", "-m")] = RetrievalMode.HYBRID,
+    strategy: StrategyOption = None,
+    k: Annotated[int | None, typer.Option("-k", help="Number of results.")] = None,
+    rerank: Annotated[bool, typer.Option(help="Apply the cross-encoder reranker.")] = True,
+    full: Annotated[bool, typer.Option(help="Print full chunk texts.")] = False,
+) -> None:
+    """Search the index and show every stage's score for each hit."""
+    settings = get_settings()
+    try:
+        retriever = HybridRetriever.from_settings(settings, strategy)
+    except IndexMismatchError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+    if len(retriever.index) == 0:
+        console.print("[yellow]The index is empty. Run `hyrag ingest` first.[/]")
+        raise typer.Exit(1)
+    results = retriever.retrieve(query, mode, k, rerank=rerank)
+    _print_results(results, f"{mode.value} · {retriever.index.strategy.value}", full)
+
+
+def _fmt(value: float | None, spec: str) -> str:
+    return "-" if value is None else format(value, spec)
+
+
+def _print_results(results: list[ScoredChunk], title: str, full: bool) -> None:
+    table = Table(title=title)
+    for col in ("#", "source", "section", "dense", "bm25", "rrf", "rerank"):
+        table.add_column(col, justify="left" if col in {"source", "section"} else "right")
+    for r in results:
+        c = r.chunk
+        table.add_row(
+            str(r.rank),
+            c.source + (f" p.{c.page}" if c.page else ""),
+            (c.section_heading or "").split(" > ")[-1],
+            f"{_fmt(r.dense_score, '.3f')} #{r.dense_rank}" if r.dense_rank else "-",
+            f"{_fmt(r.sparse_score, '.2f')} #{r.sparse_rank}" if r.sparse_rank else "-",
+            _fmt(r.rrf_score, ".4f"),
+            _fmt(r.rerank_score, ".2f"),
+        )
+    console.print(table)
+    for r in results:
+        text = r.chunk.text
+        if not full and len(text) > 240:
+            text = text[:240].replace("\n", " ") + " ..."
+        console.rule(f"{r.rank}. {r.chunk.source}", align="left")
+        console.print(text, markup=False, highlight=False)
 
 
 if __name__ == "__main__":  # pragma: no cover
