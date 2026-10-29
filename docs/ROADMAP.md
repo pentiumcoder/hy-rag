@@ -26,12 +26,13 @@ hy-rag is built in five phases. Each phase ends with a stable interface that the
 - [x] Dense and sparse retrieval, weighted Reciprocal Rank Fusion
 - [x] Cross-encoder reranking (top 20 → top 5)
 
-## Phase 3: Generation and citations
+## Phase 3: Generation and citations ✅
 
-- [ ] Grounded prompt with numbered `[n]` citations
-- [ ] Citation verification with an LLM judge from a different model family
-- [ ] Composite confidence score (retrieval, citation coverage, completeness)
-- [ ] Structured "I don't know" responses when retrieval is weak
+- [x] LLM adapters: Ollama (default, local), optional OpenAI and Anthropic, a response cache and a deterministic stub for CI
+- [x] Grounded prompt with numbered `[n]` citations
+- [x] Citation verification with an LLM judge from a different model family, batched into one call
+- [x] Composite confidence score (retrieval, citation coverage, completeness)
+- [x] Structured "I don't know" responses when retrieval is weak
 
 ## Phase 4: Evaluation and API
 
