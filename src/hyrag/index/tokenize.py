@@ -35,3 +35,21 @@ def tokenize(text: str) -> list[str]:
         elif parts and parts[0] not in STOPWORDS:
             tokens.append(parts[0])
     return tokens
+
+
+# Words that carry no topic in a question ("how many ...", "tell me about ...").
+_QUESTION_WORDS = frozenset({"many", "much", "get", "gets", "tell", "explain", "about", "any"})
+
+
+def key_terms(text: str) -> list[str]:
+    """The distinct whole terms of a question, without stop words, in order of appearance.
+
+    Used to say which parts of a question the retrieved context covers. Unlike
+    :func:`tokenize` it does not emit identifier parts, so ``NW-4290`` stays one term, and it
+    drops single characters such as the ``s`` of ``CEO's``.
+    """
+    seen: dict[str, None] = {}
+    for match in _TOKEN.findall(text.lower()):
+        if len(match) > 1 and match not in STOPWORDS and match not in _QUESTION_WORDS:
+            seen.setdefault(match, None)
+    return list(seen)

@@ -4,6 +4,22 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-29
+
+### Added
+
+- `LLMClient` protocol with an Ollama adapter (the default: `qwen2.5:7b` generates, `llama3.1:8b` judges), optional OpenAI and Anthropic adapters, retries with backoff, tolerant JSON parsing with one repair round, and a SQLite response cache for deterministic calls.
+- Grounded answer prompt: passages in `<passage id="n">` tags, a `[n]` citation after every sentence and bullet, exact values copied verbatim, a "The context does not cover" sentence for partial answers, and an `INSUFFICIENT_CONTEXT` reply with `Found:` and `Missing:` lines.
+- Claim extraction that splits answers into sentences and bullets, expands `[1-3]` and `[2, 4]`, recognizes "not covered" sentences as gaps rather than facts, and lets a block's closing citation group cover the uncited lines before it.
+- `CitationVerifier`: every (claim, passage) pair is labelled SUPPORTED, PARTIAL or UNSUPPORTED by the judge in one batched JSON call, along with a completeness rating. Citations of passages that do not exist are rejected without a model call.
+- Confidence score `0.4 x retrieval + 0.4 x citation coverage + 0.2 x completeness`, where retrieval is a shifted sigmoid of the best cross-encoder logit.
+- Structured abstention (`found`, `missing`, `suggested_documents`) when retrieval confidence is below `HYRAG_ABSTAIN_THRESHOLD` (nothing is generated), when the generator reports insufficient context, or when every sentence of the answer is a gap.
+- `AnswerPipeline.ask(query, overrides) -> AnswerResponse`, with per-request overrides for mode, strategy, `top_k`, rerank, verification and the abstention threshold.
+- `hyrag ask` with a claims table, flagged sources, the confidence breakdown, timings and `--json` output.
+- `ExtractiveStubLLM`, a deterministic lexical generator and judge, so the whole pipeline runs offline in tests and CI.
+- Opt-in end-to-end tests against Ollama (`HYRAG_TEST_LLM=1 pytest -m llm`), including a planted hallucination the judge must flag.
+- ADR-0003 on batched, cross-family citation verification, confidence and abstention.
+
 ## [0.2.0] - 2026-10-28
 
 ### Added
@@ -37,6 +53,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - CI on Python 3.11 to 3.13 (ruff, mypy strict, pytest with coverage), pre-commit hooks, Dependabot and community health files.
 - ADR-0001 on the chunking strategies, and the project roadmap.
 
-[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pentiumcoder/hy-rag/releases/tag/v0.1.0

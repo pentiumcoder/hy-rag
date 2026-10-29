@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Runs locally](https://img.shields.io/badge/runs-100%25%20locally-purple)
 
-> **Status: Day 2 of 5.** Ingestion, indexing and hybrid retrieval are done. See the [roadmap](docs/ROADMAP.md) for what's next.
+> **Status: Day 3 of 5.** Ingestion, hybrid retrieval and grounded answers with verified citations are done. See the [roadmap](docs/ROADMAP.md) for what's next.
 
 ## Why this exists
 
@@ -20,7 +20,7 @@ Most RAG demos embed one PDF and call it done. Real internal docs are messier:
 
 hy-rag treats those as first-class engineering problems and measures every design decision against a golden evaluation set.
 
-## What works today (v0.2.0)
+## What works today (v0.3.0)
 
 | Capability | Details |
 |---|---|
@@ -31,6 +31,10 @@ hy-rag treats those as first-class engineering problems and measures every desig
 | Dense + sparse indexes | ChromaDB (one collection per chunking strategy) and BM25 with an identifier-aware tokenizer, both written only by `IndexManager`, which detects drift and repairs BM25 from Chroma |
 | Near-duplicate filter | Chunks with cosine > 0.95 to an indexed chunk are skipped and logged to `dedup_report.json` |
 | Hybrid retrieval | Dense and BM25 top 10 each, fused with Reciprocal Rank Fusion, then a cross-encoder (`ms-marco-MiniLM-L-6-v2`) reranks the top 20 down to 5 |
+| Grounded answers | `qwen2.5:7b` on Ollama answers only from the retrieved passages, with a `[n]` citation after every sentence and bullet, or says the context is insufficient |
+| Verified citations | A judge from a different model family (`llama3.1:8b`) labels every claim–citation pair SUPPORTED, PARTIAL or UNSUPPORTED in one batched call. Citations of passages that don't exist are rejected without asking it. |
+| Confidence score | `0.4 × retrieval + 0.4 × citation coverage + 0.2 × completeness`, always shown with its breakdown |
+| Structured abstention | When retrieval is weak, nothing is generated. The response lists what was found, what is missing and the closest documents. |
 | Sample corpus | 26 internal docs for the fictional company *Northwind Cloud*, covering runbooks, config and API references, policies and postmortems, across all 4 formats |
 
 ### Why hybrid: a real example from this corpus
@@ -57,6 +61,38 @@ $ hyrag search "NW-4290" -k 3
 
 [ADR-0002](docs/adr/0002-hybrid-retrieval-and-rrf.md) explains the fusion design, including why the default weights are equal rather than 0.7 / 0.3.
 
+### Answers that show their work
+
+A first sample of 12 questions, run with the local models. The full 55-question evaluation comes in Phase 4.
+
+| question | outcome | confidence |
+|---|---|---|
+| How many PTO days carry over to next year? | answered, 1/1 sentences supported | 1.00 |
+| What error do I get when a batch exceeds `ingest.max_batch_size`? | answered, 2/2 supported | 1.00 |
+| What should I do when `CertExpiringSoon` fires? | answered, 3 of 4 steps fully supported; 2 stray citations flagged | 0.85 |
+| What is the per diem for travel meals? | answered and supported, plus one "not covered" sentence | 0.81 |
+| How much does the Team plan cost? *(there is no Team plan)* | **abstained**: the generator found the pricing page but no Team plan | 0.27 |
+| Who won the 2022 football world cup? | **abstained before generating**: best rerank logit −10.8 | 0.01 |
+
+Of the 12, all 8 answerable questions were answered (confidence 0.81–1.00), and all 4 unanswerable ones abstained: 2 at the retrieval gate and 2 by the generator. When the model cites the wrong passage, the judge says so:
+
+```text
+$ hyrag ask "What should I do when CertExpiringSoon fires?"
+ - Find the failing certificate using kubectl get certificates -A | grep -v True.
+ - Describe the certificate and read the latest events with kubectl describe ...
+ - Common causes include Let's Encrypt rate limits, DNS challenges, or an unhealthy internal CA issuer.
+ - Once the cause is fixed, force a renewal with kubectl cert-manager renew <name> -n <namespace>. [1][3][4]
+
+[1] runbooks/certificate-rotation.md > When CertExpiringSoon fires
+[3] runbooks/database-failover.md > Automatic failover  flagged
+[4] runbooks/ingest-backpressure.md > Runbook: Ingest Backpressure  flagged
+
+confidence 0.85 = 0.4 x retrieval 0.99 (rerank) + 0.4 x citations 0.88 + 0.2 x completeness 0.50
+! Passage [3] does not support sentence(s) 1, 2, 3, 4: Passage [3] is about a different alert ...
+```
+
+[ADR-0003](docs/adr/0003-verified-citations-confidence-abstention.md) covers the design: why the judge is a different model family, why all checks go in one call, and why retrieval scores alone can't decide when to abstain.
+
 ## Quickstart
 
 ```bash
@@ -68,9 +104,13 @@ hyrag ingest --all                                  # parse, chunk, dedup, embed
 hyrag search "What error do I get when a batch is too large?"
 hyrag search "NW-4290" --mode sparse                # dense | sparse | hybrid
 hyrag chunk --compare                               # chunking statistics per strategy
+
+ollama pull qwen2.5:7b && ollama pull llama3.1:8b   # generator and judge, about 9.6 GB
+hyrag ask "How many PTO days carry over to next year?"
+hyrag ask "What does a SEV1 incident require?" --json --no-verify
 ```
 
-The first `ingest` downloads the two local models (about 150 MB) into `.cache/models/`. After that everything runs offline.
+The first `ingest` downloads the two local retrieval models (about 150 MB) into `.cache/models/`. `hyrag ask` needs [Ollama](https://ollama.com) running; with 8 GB of VRAM the two LLMs take turns on the GPU, so an answer takes 15–30 s, and repeated questions come from the response cache in `data/cache/`. To use a hosted model instead, set `HYRAG_LLM_PROVIDER=openai` or `anthropic` and install the matching extra.
 
 ## Project layout
 
@@ -81,6 +121,8 @@ src/hyrag/
   embeddings/  fastembed, OpenAI (optional) and fake embedders, plus the disk cache
   index/       Chroma vector store, BM25 store, tokenizer, dedup, IndexManager
   retrieval/   reciprocal rank fusion, cross-encoder reranker, HybridRetriever
+  llm/         Ollama, OpenAI and Anthropic chat clients, response cache, test stub
+  generation/  prompts, claim parsing, citation verifier, confidence, abstention, AnswerPipeline
   cli.py       `hyrag` command-line interface
 data/corpus/   Northwind Cloud sample documentation
 scripts/       sample-PDF generator and its plain-text sources
@@ -92,16 +134,18 @@ docs/          roadmap and architecture decision records
 ```bash
 ruff check . && ruff format --check .
 mypy
-pytest --cov                                 # fast, offline: fake embedder, no reranker
-HYRAG_TEST_MODELS=1 pytest -m models         # end-to-end with the real local models
+pytest --cov                                 # fast, offline: fake embedder, stub LLM, no reranker
+HYRAG_TEST_MODELS=1 pytest -m models         # retrieval with the real local models
+HYRAG_TEST_LLM=1 pytest -m llm               # answering end to end, needs Ollama running
 ```
 
-CI runs the same checks on Python 3.11, 3.12 and 3.13. The default test run uses a deterministic fake embedder, so it needs no network, models or API keys.
+CI runs the same checks on Python 3.11, 3.12 and 3.13. The default test run uses a deterministic fake embedder and an extractive stub model that plays both generator and judge, so the whole pipeline runs with no network, models or API keys.
 
 ## Design decisions
 
 - [ADR-0001: Three switchable chunking strategies](docs/adr/0001-chunking-strategies.md)
 - [ADR-0002: Hybrid retrieval with equal-weight RRF and a cross-encoder rerank](docs/adr/0002-hybrid-retrieval-and-rrf.md)
+- [ADR-0003: Batched cross-family citation checks, confidence and abstention](docs/adr/0003-verified-citations-confidence-abstention.md)
 
 ## License
 

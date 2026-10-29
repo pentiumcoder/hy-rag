@@ -115,3 +115,103 @@ class ScoredChunk(BaseModel):
     sparse_rank: int | None = None
     rrf_score: float | None = None
     rerank_score: float | None = None  # cross-encoder logit
+
+
+VerdictLabel = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "UNVERIFIED"]
+ClaimLabel = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "UNVERIFIED", "UNCITED"]
+AbstentionReason = Literal["no_results", "low_retrieval_confidence", "insufficient_context"]
+
+
+class AskOverrides(BaseModel):
+    """Per-request knobs; ``None`` means use the configured setting."""
+
+    mode: RetrievalMode | None = None
+    strategy: ChunkStrategy | None = None
+    top_k: int | None = Field(default=None, ge=1, le=20)
+    rerank: bool | None = None
+    verify: bool | None = None
+    abstain_threshold: float | None = Field(default=None, ge=0, le=1)
+
+
+class Claim(BaseModel):
+    """One sentence (or bullet) of the answer and the passages it cites.
+
+    ``kind="gap"`` marks a sentence stating what the context does *not* cover; it needs no
+    citation and is left out of citation coverage.
+    """
+
+    index: int  # 1-based position in the answer
+    text: str  # with the [n] markers removed
+    citations: list[int] = Field(default_factory=list)
+    kind: Literal["fact", "gap"] = "fact"
+    inherited: bool = False  # citations copied from the citation group closing its block
+    label: ClaimLabel | None = None  # best verdict over its citations; None for gaps
+
+
+class CitationCheck(BaseModel):
+    """The judge's verdict on whether passage ``citation`` supports claim ``claim``."""
+
+    claim: int
+    citation: int
+    label: VerdictLabel
+    reason: str = ""
+
+
+class Citation(BaseModel):
+    """A passage the answer cites, resolved to its source. ``flagged`` if any use of it failed."""
+
+    number: int
+    chunk_id: str
+    source: str
+    title: str
+    section_heading: str | None = None
+    page: int | None = None
+    flagged: bool = False
+
+
+class Confidence(BaseModel):
+    """``score = 0.4 * retrieval + 0.4 * citation_coverage + 0.2 * completeness``."""
+
+    score: float
+    retrieval: float
+    citation_coverage: float
+    completeness: float
+    retrieval_signal: Literal["rerank", "lexical", "none"]
+
+
+class DocumentRef(BaseModel):
+    source: str
+    title: str
+    section_heading: str | None = None
+    page: int | None = None
+    score: float | None = None
+
+
+class Abstention(BaseModel):
+    """What the system says instead of guessing: what it found, what is missing, where to look."""
+
+    reason: AbstentionReason
+    message: str
+    found: list[str] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    suggested_documents: list[DocumentRef] = Field(default_factory=list)
+
+
+class AnswerResponse(BaseModel):
+    """Phase 3 contract: everything ``AnswerPipeline.ask`` knows about one question."""
+
+    query: str
+    answer: str | None  # keeps the [n] markers; None when abstained
+    abstained: bool
+    abstention: Abstention | None = None
+    claims: list[Claim] = Field(default_factory=list)
+    checks: list[CitationCheck] = Field(default_factory=list)
+    citations: list[Citation] = Field(default_factory=list)
+    confidence: Confidence
+    contexts: list[ScoredChunk] = Field(default_factory=list)  # [n] is contexts[n - 1]
+    mode: RetrievalMode
+    strategy: ChunkStrategy
+    generator: str | None = None
+    judge: str | None = None
+    timings_ms: dict[str, float] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
