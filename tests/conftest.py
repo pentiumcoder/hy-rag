@@ -15,9 +15,11 @@ CORPUS_DIR = REPO_ROOT / "data" / "corpus"
 
 @pytest.fixture(autouse=True)
 def _offline_models(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """Tests never download models: the fake embedder and no reranker unless a test opts in."""
+    """Tests never download or call models: fake embedder, no reranker and the stub LLM."""
     monkeypatch.setenv("HYRAG_EMBEDDING_PROVIDER", "fake")
     monkeypatch.setenv("HYRAG_RERANKER", "none")
+    monkeypatch.setenv("HYRAG_LLM_PROVIDER", "stub")
+    monkeypatch.delenv("HYRAG_JUDGE_PROVIDER", raising=False)
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
