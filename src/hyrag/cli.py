@@ -2,21 +2,34 @@
 
 from __future__ import annotations
 
+from contextlib import nullcontext
 from pathlib import Path
 from statistics import mean
 from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
+from rich.text import Text
 
 from hyrag import __version__
 from hyrag.chunking import get_chunker
 from hyrag.config import get_settings
 from hyrag.embeddings import embedder_from_settings
+from hyrag.generation import AnswerPipeline
 from hyrag.index import Duplicate, IndexManager, IndexMismatchError
 from hyrag.ingestion import DocumentStore, load_corpus
-from hyrag.models import Chunk, ChunkStrategy, Document, RetrievalMode, ScoredChunk
+from hyrag.llm import LLMError
+from hyrag.models import (
+    AnswerResponse,
+    AskOverrides,
+    Chunk,
+    ChunkStrategy,
+    Document,
+    RetrievalMode,
+    ScoredChunk,
+)
 from hyrag.retrieval import HybridRetriever
 
 app = typer.Typer(
@@ -202,6 +215,108 @@ def _print_results(results: list[ScoredChunk], title: str, full: bool) -> None:
             text = text[:240].replace("\n", " ") + " ..."
         console.rule(f"{r.rank}. {r.chunk.source}", align="left")
         console.print(text, markup=False, highlight=False)
+
+
+@app.command()
+def ask(
+    question: Annotated[str, typer.Argument(help="The question to answer.")],
+    mode: Annotated[RetrievalMode, typer.Option("--mode", "-m")] = RetrievalMode.HYBRID,
+    strategy: StrategyOption = None,
+    k: Annotated[int | None, typer.Option("-k", help="Number of passages to use.")] = None,
+    rerank: Annotated[bool, typer.Option(help="Apply the cross-encoder reranker.")] = True,
+    verify: Annotated[
+        bool | None, typer.Option("--verify/--no-verify", help="Check citations with the judge.")
+    ] = None,
+    as_json: Annotated[
+        bool, typer.Option("--json", help="Print the full response as JSON.")
+    ] = False,
+    context: Annotated[bool, typer.Option(help="Also print the retrieved passages.")] = False,
+) -> None:
+    """Answer a question with [n] citations, verified sources and a confidence score."""
+    settings = get_settings()
+    try:
+        pipeline = AnswerPipeline.from_settings(settings, strategy)
+    except IndexMismatchError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+    if len(pipeline.retriever_for(strategy or pipeline.default_strategy).index) == 0:
+        console.print("[yellow]The index is empty. Run `hyrag ingest` first.[/]")
+        raise typer.Exit(1)
+    overrides = AskOverrides(mode=mode, strategy=strategy, top_k=k, rerank=rerank, verify=verify)
+    try:
+        with nullcontext() if as_json else console.status("Retrieving, answering, verifying..."):
+            response = pipeline.ask(question, overrides)
+    except LLMError as exc:
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(1) from exc
+    if as_json:
+        typer.echo(response.model_dump_json(indent=2))
+        return
+    _print_answer(response)
+    if context:
+        _print_results(response.contexts, "retrieved passages", full=False)
+
+
+_VERDICT_STYLE = {
+    "SUPPORTED": "green",
+    "PARTIAL": "yellow",
+    "UNVERIFIED": "dim",
+    "UNSUPPORTED": "bold red",
+    "UNCITED": "bold red",
+}
+
+
+def _location(source: str, section: str | None, page: int | None = None) -> str:
+    where = source + (f" p.{page}" if page else "")
+    return where + (f" > {section.split(' > ')[-1]}" if section else "")
+
+
+def _print_answer(r: AnswerResponse) -> None:
+    if r.abstained and r.abstention:
+        a = r.abstention
+        body = Text(a.message)
+        for label, items in (("Found", a.found), ("Missing", a.missing)):
+            for item in items:
+                body.append(f"\n{label}: ", style="bold").append(item)
+        console.print(Panel(body, title="No confident answer", border_style="yellow"))
+        if a.suggested_documents:
+            console.print("Closest documents:")
+            for doc in a.suggested_documents:
+                console.print(Text(f"  - {_location(doc.source, doc.section_heading, doc.page)}"))
+    else:
+        text = Text(r.answer or "")
+        text.highlight_regex(r"\[\d+(?:\s*[,\-–]\s*\d+)*\]", "bold cyan")
+        console.print(Panel(text, title="Answer", border_style="green"))
+        table = Table(title="Claims", title_justify="left")
+        for col in ("#", "claim", "cites", "verdict"):
+            table.add_column(col, overflow="fold")
+        for claim in r.claims:
+            label = claim.label or "gap"
+            table.add_row(
+                str(claim.index),
+                Text(claim.text),
+                " ".join(f"[{n}]" for n in claim.citations) or "-",
+                Text(label, style=_VERDICT_STYLE.get(label, "dim")),
+            )
+        console.print(table)
+        for c in r.citations:
+            line = Text(f"[{c.number}] {_location(c.source, c.section_heading, c.page)}")
+            if c.flagged:
+                line.append("  flagged", style="bold red")
+            console.print(line)
+
+    conf = r.confidence
+    console.print(
+        f"\n[bold]confidence {conf.score:.2f}[/] = 0.4 x retrieval {conf.retrieval:.2f} "
+        f"({conf.retrieval_signal}) + 0.4 x citations {conf.citation_coverage:.2f} "
+        f"+ 0.2 x completeness {conf.completeness:.2f}"
+    )
+    for warning in r.warnings:
+        console.print(Text(f"! {warning}", style="yellow"))
+    timings = "  ".join(f"{name} {ms / 1000:.1f}s" for name, ms in r.timings_ms.items())
+    roles = (("generator", r.generator), ("judge", r.judge))
+    models = "  ".join(f"{role} {name}" for role, name in roles if name)
+    console.print(Text(f"{r.mode.value} / {r.strategy.value}  {models}  {timings}", style="dim"))
 
 
 if __name__ == "__main__":  # pragma: no cover
