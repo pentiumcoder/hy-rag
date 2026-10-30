@@ -72,7 +72,11 @@ class IndexManager:
         self.embedder = embedder
         self._chunker = chunker
         self.dir = settings.index_dir / self.strategy.value
-        self.vectors = VectorStore(settings.index_dir / "chroma", f"hyrag_{self.strategy.value}")
+        self.vectors = VectorStore(
+            settings.index_dir / "chroma",
+            f"hyrag_{self.strategy.value}",
+            embed=embedder.embed_documents,
+        )
         self.bm25 = BM25Store.load(self.dir / "bm25.json")
         self.manifest = self._load_manifest()
         self.repaired = self._reconcile()
