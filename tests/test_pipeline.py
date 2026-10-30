@@ -93,7 +93,7 @@ def test_low_retrieval_confidence_abstains_without_generating(indexed: Settings)
     assert generator.calls == []
     assert r.abstained and r.answer is None and r.abstention
     assert r.abstention.reason == "low_retrieval_confidence"
-    assert "0.03 < 0.20" in r.abstention.message
+    assert "0.03 < 0.30" in r.abstention.message
     assert r.abstention.suggested_documents
     assert r.generator is None and r.judge is None
     assert r.confidence.retrieval_signal == "rerank"
@@ -102,7 +102,7 @@ def test_low_retrieval_confidence_abstains_without_generating(indexed: Settings)
 
 
 def test_threshold_override_controls_the_gate(indexed: Settings) -> None:
-    pipeline = _pipeline(indexed, logit=-6.0)  # retrieval confidence ~0.27
+    pipeline = _pipeline(indexed, logit=-5.0)  # retrieval confidence ~0.38
     assert not pipeline.ask(ANSWERABLE).abstained
     gated = pipeline.ask(ANSWERABLE, AskOverrides(abstain_threshold=0.5))
     assert gated.abstention and gated.abstention.reason == "low_retrieval_confidence"
@@ -226,3 +226,74 @@ def test_llm_from_settings_builds_cached_ollama_clients(tmp_path: Path) -> None:
     assert isinstance(uncached, ExtractiveStubLLM)
     raw = llm_from_settings(settings.model_copy(update={"llm_cache": False}))
     assert isinstance(raw, OllamaClient) and raw.base_url == "http://gpu:11434"
+
+
+def _judge_says(answerable: str, label: str = "UNSUPPORTED") -> ScriptedLLM:
+    reply = json.dumps(
+        {
+            "checks": [{"id": 1, "label": label, "reason": "r"}],
+            "completeness": "COMPLETE",
+            "answerable": answerable,
+        }
+    )
+    return ScriptedLLM([reply])
+
+
+def test_generate_then_verify_equals_ask(indexed: Settings) -> None:
+    pipeline = _pipeline(indexed)
+    draft = pipeline.generate(ANSWERABLE)
+    assert not draft.abstained and draft.answer and draft.judge is None
+    assert {c.label for c in draft.claims} == {None}  # nothing is verified yet
+    assert "verify" not in draft.timings_ms
+    final = pipeline.verify(draft)
+    assert final.judge == "stub:extractive" and final.claims[0].label == "SUPPORTED"
+    assert final.timings_ms["total"] >= draft.timings_ms["total"]
+    assert final.confidence.answerability == 1.0
+    assert final.model_dump(exclude={"timings_ms"}) == pipeline.ask(ANSWERABLE).model_dump(
+        exclude={"timings_ms"}
+    )
+    assert draft.claims[0].label is None  # verify() returns a new response
+
+
+def test_verifying_an_abstention_is_a_no_op(indexed: Settings) -> None:
+    pipeline = _pipeline(indexed, logit=-11.0)
+    abstained = pipeline.generate(ANSWERABLE)
+    assert pipeline.verify(abstained) is abstained
+
+
+def test_the_judge_withdraws_an_answer_the_passages_do_not_support(indexed: Settings) -> None:
+    """Item 3 of ADR-0003: a near-miss passage scores well but does not answer the question."""
+    reply = "The Team plan costs $99 per month [1]."
+    r = _pipeline(indexed, generator=ScriptedLLM([reply]), judge=_judge_says("NO")).ask(
+        "How much does the Team plan cost?"
+    )
+    assert r.abstained and r.answer is None and r.abstention
+    assert r.abstention.reason == "unanswerable"
+    assert r.abstention.draft_answer == reply
+    assert r.claims[0].label == "UNSUPPORTED"  # the evidence is kept for inspection
+    assert r.judge == "stub:scripted"
+    assert r.confidence.answerability == 0.0
+
+
+def test_the_judge_check_keeps_answers_with_support_or_when_disabled(indexed: Settings) -> None:
+    reply = "Up to 5 unused PTO days carry over [1]."
+    supported = _pipeline(
+        indexed, generator=ScriptedLLM([reply]), judge=_judge_says("NO", "SUPPORTED")
+    ).ask(ANSWERABLE)
+    assert not supported.abstained  # the judge contradicts itself; the supported claim wins
+
+    off = indexed.model_copy(update={"abstain_on_unanswerable": False})
+    kept = _pipeline(off, generator=ScriptedLLM([reply]), judge=_judge_says("NO")).ask(ANSWERABLE)
+    assert not kept.abstained and kept.answer == reply
+
+
+def test_the_confidence_floor_withdraws_weak_answers(indexed: Settings) -> None:
+    reply = "Up to 5 unused PTO days carry over [1]."
+    pipeline = _pipeline(indexed, generator=ScriptedLLM([reply, reply]), judge=_judge_says("YES"))
+    floored = pipeline.ask(ANSWERABLE, AskOverrides(answer_threshold=0.99))
+    assert floored.abstention and floored.abstention.reason == "low_answer_confidence"
+    assert "< 0.99" in floored.abstention.message
+    assert floored.abstention.draft_answer == reply
+
+    unverified = pipeline.ask(ANSWERABLE, AskOverrides(answer_threshold=0.99, verify=False))
+    assert not unverified.abstained  # the floor is calibrated on verified scores only

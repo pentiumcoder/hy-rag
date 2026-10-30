@@ -119,7 +119,13 @@ class ScoredChunk(BaseModel):
 
 VerdictLabel = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "UNVERIFIED"]
 ClaimLabel = Literal["SUPPORTED", "PARTIAL", "UNSUPPORTED", "UNVERIFIED", "UNCITED"]
-AbstentionReason = Literal["no_results", "low_retrieval_confidence", "insufficient_context"]
+AbstentionReason = Literal[
+    "no_results",  # retrieval returned nothing
+    "low_retrieval_confidence",  # gated before generation
+    "insufficient_context",  # the generator declined
+    "unanswerable",  # the judge found the passages do not answer it (after generation)
+    "low_answer_confidence",  # the verified answer scored below answer_threshold
+]
 
 
 class AskOverrides(BaseModel):
@@ -131,6 +137,7 @@ class AskOverrides(BaseModel):
     rerank: bool | None = None
     verify: bool | None = None
     abstain_threshold: float | None = Field(default=None, ge=0, le=1)
+    answer_threshold: float | None = Field(default=None, ge=0, le=1)
 
 
 class Claim(BaseModel):
@@ -170,13 +177,18 @@ class Citation(BaseModel):
 
 
 class Confidence(BaseModel):
-    """``score = 0.4 * retrieval + 0.4 * citation_coverage + 0.2 * completeness``."""
+    """``score = 0.4 * retrieval + 0.4 * citation_coverage + 0.2 * completeness``.
+
+    ``answerability`` (the judge's view of whether the passages answer the question) is not
+    part of the score; it feeds the post-answer abstention rule instead.
+    """
 
     score: float
     retrieval: float
     citation_coverage: float
     completeness: float
     retrieval_signal: Literal["rerank", "lexical", "none"]
+    answerability: float | None = None  # 1 yes, 0.5 partly, 0 no; None when not judged
 
 
 class DocumentRef(BaseModel):
@@ -195,6 +207,7 @@ class Abstention(BaseModel):
     found: list[str] = Field(default_factory=list)
     missing: list[str] = Field(default_factory=list)
     suggested_documents: list[DocumentRef] = Field(default_factory=list)
+    draft_answer: str | None = None  # the withdrawn answer, when abstaining after generation
 
 
 class AnswerResponse(BaseModel):

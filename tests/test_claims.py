@@ -99,6 +99,7 @@ def test_extract_claims_numbers_facts_and_marks_gaps() -> None:
         "The context does not cover the Team plan.",
         "The provided passages do not mention a student discount [1].",
         "The Team plan is not mentioned in the provided passages. [1][2]",
+        "- The Team plan pricing is not explicitly mentioned in the provided passages. [1][2]",
         "There is no information about dental insurance.",
     ],
 )

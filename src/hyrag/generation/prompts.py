@@ -50,12 +50,16 @@ condition must match.
 - PARTIAL: the passage supports part of the claim, but a detail is missing or different.
 - UNSUPPORTED: the passage does not state the claim, contradicts it, or is about something else.
 
-Also rate whether the answer as a whole addresses every part of the question: COMPLETE, \
-PARTIAL or INCOMPLETE.
+Also give two overall ratings:
+- completeness: does the answer address every part of the question? COMPLETE, PARTIAL or \
+INCOMPLETE.
+- answerable: do the passages themselves contain the information the question asks for? \
+YES, PARTIAL or NO. Judge the passages, not the answer: a question about something the \
+passages never mention is NO even if the answer sounds plausible.
 
 Reply with only a JSON object in this shape, with one entry per check id:
 {"checks": [{"id": 1, "label": "SUPPORTED", "reason": "<under 15 words>"}], \
-"completeness": "COMPLETE"}"""
+"completeness": "COMPLETE", "answerable": "YES"}"""
 
 
 @dataclass(frozen=True)

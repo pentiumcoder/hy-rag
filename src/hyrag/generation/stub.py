@@ -114,4 +114,9 @@ class ExtractiveStubLLM:
         completeness = (
             "COMPLETE" if answered >= 0.6 else "PARTIAL" if answered >= 0.3 else "INCOMPLETE"
         )
-        return json.dumps({"checks": checks, "completeness": completeness})
+        in_passages = set().union(*passages.values()) if passages else set()
+        covered = len(q_terms & in_passages) / len(q_terms) if q_terms else 1.0
+        answerable = "YES" if covered >= 0.6 else "PARTIAL" if covered >= 0.3 else "NO"
+        return json.dumps(
+            {"checks": checks, "completeness": completeness, "answerable": answerable}
+        )
