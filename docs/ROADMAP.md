@@ -34,12 +34,14 @@ hy-rag is built in five phases. Each phase ends with a stable interface that the
 - [x] Composite confidence score (retrieval, citation coverage, completeness)
 - [x] Structured "I don't know" responses when retrieval is weak
 
-## Phase 4: Evaluation and API
+## Phase 4: Evaluation and API ✅
 
-- [ ] 55-question golden dataset: lookup, multi-hop, exact-term, unanswerable, ambiguous
-- [ ] Metrics: recall@k, MRR, correctness, faithfulness, citation accuracy, abstention precision
-- [ ] Comparison matrix: 3 chunking strategies × hybrid / dense / sparse
-- [ ] FastAPI service: `/v1/ask`, `/v1/documents`, `/v1/ingest`
+- [x] 55-question golden dataset: lookup, multi-hop, exact-term, unanswerable, ambiguous
+- [x] Metrics: recall@k, MRR, correctness, faithfulness, citation accuracy, abstention precision
+- [x] Comparison matrix: 3 chunking strategies × hybrid / dense / sparse, with and without reranking
+- [x] Abstention thresholds tuned on the eval data, plus a judge answerability check
+- [x] FastAPI service: `/v1/ask`, `/v1/search`, `/v1/documents`, `/v1/ingest`, `/v1/eval/summary`
+- [x] Offline evaluation in CI on every pull request
 
 ## Phase 5: Dashboard and deployment
 

@@ -47,3 +47,25 @@ jobs:
         run: |
           echo "## Coverage" >> "$GITHUB_STEP_SUMMARY"
           coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+  eval:
+    name: Offline evaluation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[dev]"
+      # Fake embedder, no reranker and the extractive stub LLM: no models, no network.
+      # The gate catches regressions in chunking, BM25 or fusion, not in model quality.
+      - run: hyrag eval --offline --no-charts --output "$RUNNER_TEMP/eval" --min-recall 0.85
+      - name: Report
+        if: always()
+        run: cat "$RUNNER_TEMP/eval/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: offline-eval
+          path: ${{ runner.temp }}/eval

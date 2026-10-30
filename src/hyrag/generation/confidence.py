@@ -66,7 +66,11 @@ def citation_coverage(claims: Sequence[Claim]) -> float:
 
 
 def combine(
-    retrieval: float, coverage: float, completeness: float, signal: RetrievalSignal
+    retrieval: float,
+    coverage: float,
+    completeness: float,
+    signal: RetrievalSignal,
+    answerability: float | None = None,
 ) -> Confidence:
     score = (
         WEIGHTS["retrieval"] * retrieval
@@ -79,4 +83,5 @@ def combine(
         citation_coverage=round(coverage, 4),
         completeness=round(completeness, 4),
         retrieval_signal=signal,
+        answerability=answerability,
     )

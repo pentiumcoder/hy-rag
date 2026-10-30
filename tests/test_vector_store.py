@@ -67,3 +67,83 @@ def test_collections_are_isolated(tmp_path: Path, embedder: FakeEmbedder) -> Non
     b = VectorStore(tmp_path / "chroma", "col_b")
     a.upsert([make_chunk(TEXTS[0])], embedder.embed_documents(TEXTS[:1]))
     assert (a.count(), b.count()) == (1, 0)
+
+
+def test_stores_on_one_directory_share_a_client_and_see_each_others_writes(
+    tmp_path: Path,
+) -> None:
+    """A second client on the same directory used to miss unflushed HNSW segments."""
+    writer = VectorStore(tmp_path / "chroma", "col_a")
+    chunks = [make_chunk(f"text number {i}", index=i) for i in range(5)]
+    embedder = FakeEmbedder(dim=32)
+    writer.upsert(chunks, embedder.embed_documents([c.text for c in chunks]))
+    reader = VectorStore(tmp_path / "chroma", "col_a")
+    assert reader._client is writer._client
+    hits = reader.query(embedder.embed_query("text number 3"), 2)
+    assert hits[0].chunk_id == chunks[3].chunk_id
+
+
+@pytest.mark.parametrize("reembed", [False, True])
+def test_a_failing_hnsw_reader_falls_back_to_exact_search(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, reembed: bool
+) -> None:
+    """Chroma 1.x sometimes reports a fresh collection's HNSW segment as missing.
+
+    With an embedder the fallback re-embeds the stored texts, because reading the stored
+    vectors fails the same way; without one it reads the stored vectors.
+    """
+    import chromadb.errors
+
+    embedder = FakeEmbedder(dim=32)
+    store = VectorStore(
+        tmp_path / "chroma", "col_fallback", embed=embedder.embed_documents if reembed else None
+    )
+    chunks = [make_chunk(f"text number {i}", index=i) for i in range(8)]
+    store.upsert(chunks, embedder.embed_documents([c.text for c in chunks]))
+    queries = embedder.embed_documents(["text number 3", "text number 6"])
+    expected = store.query_many(queries, 4)
+
+    calls: list[int] = []
+
+    def broken(**kwargs: object) -> None:
+        calls.append(1)
+        raise chromadb.errors.InternalError(
+            "Error creating hnsw segment reader: Nothing found on disk"
+        )
+
+    monkeypatch.setattr(store._collection, "query", broken)
+    monkeypatch.setattr("hyrag.index.vector_store.time.sleep", lambda s: None)
+    if reembed:
+        real_get = store._collection.get
+
+        def get_without_vectors(**kwargs: list[str]) -> object:
+            assert "embeddings" not in kwargs.get("include", []), "vectors are unreadable"
+            return real_get(**kwargs)
+
+        monkeypatch.setattr(store._collection, "get", get_without_vectors)
+    fallback = store.query_many(queries, 4)
+    assert len(calls) == 2  # retried, then answered exactly
+    for got, want in zip(fallback, expected, strict=True):
+        assert got[0].chunk_id == want[0].chunk_id
+        sims = [h.similarity for h in got]
+        assert sims == sorted(sims, reverse=True)
+        # HNSW is approximate; the exact search can only match or beat it at each rank.
+        assert all(g >= w - 1e-4 for g, w in zip(sims, [h.similarity for h in want], strict=True))
+        assert all(h.source == "test/doc.md" for h in got)
+
+
+def test_other_chroma_errors_are_not_swallowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import chromadb.errors
+
+    store = VectorStore(tmp_path / "chroma", "col_errors")
+    chunk = make_chunk("only one")
+    store.upsert([chunk], FakeEmbedder(dim=32).embed_documents([chunk.text]))
+
+    def broken(**kwargs: object) -> None:
+        raise chromadb.errors.InternalError("disk is full")
+
+    monkeypatch.setattr(store._collection, "query", broken)
+    with pytest.raises(chromadb.errors.InternalError, match="disk is full"):
+        store.query(FakeEmbedder(dim=32).embed_query("only one"), 1)

@@ -2,18 +2,25 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+import logging
+import threading
+import time
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
 import chromadb
+import chromadb.errors
 import numpy as np
 from chromadb.config import Settings as ChromaSettings
 
 from hyrag.embeddings.base import Matrix, Vector
 from hyrag.models import Chunk, ChunkStrategy
 
+logger = logging.getLogger(__name__)
+
 _BATCH = 1000  # Chroma rejects very large single upserts
+_QUERY_ATTEMPTS = 2  # HNSW retries before falling back to exact search
 
 
 class VectorHit(NamedTuple):
@@ -54,13 +61,37 @@ def _from_record(chunk_id: str, text: str, meta: Mapping[str, Any]) -> Chunk:
     )
 
 
+_CLIENTS: dict[str, Any] = {}
+_CLIENTS_LOCK = threading.Lock()
+
+
+def _client_for(path: Path) -> Any:
+    """One Chroma client per directory per process.
+
+    A second ``PersistentClient`` on the same directory loads the HNSW segment from disk,
+    which the first client may not have flushed yet; queries then fail with "Nothing found
+    on disk". Sharing the client keeps every reader on the writer's in-memory state.
+    """
+    key = str(path.resolve())
+    with _CLIENTS_LOCK:
+        if key not in _CLIENTS:
+            _CLIENTS[key] = chromadb.PersistentClient(
+                path=key, settings=ChromaSettings(anonymized_telemetry=False)
+            )
+        return _CLIENTS[key]
+
+
+Embed = Callable[[Sequence[str]], Matrix]
+
+
 class VectorStore:
-    def __init__(self, path: Path, collection: str) -> None:
+    """``embed`` re-embeds stored texts for the exact-search fallback (see :meth:`_query`)."""
+
+    def __init__(self, path: Path, collection: str, embed: Embed | None = None) -> None:
         path.mkdir(parents=True, exist_ok=True)
-        self._client = chromadb.PersistentClient(
-            path=str(path), settings=ChromaSettings(anonymized_telemetry=False)
-        )
+        self._client = _client_for(path)
         self.collection_name = collection
+        self._embed = embed
         self._collection = self._open()
 
     def _open(self) -> Any:
@@ -114,9 +145,7 @@ class VectorStore:
         n = min(k, self.count())
         if n == 0 or len(embeddings) == 0:
             return [[] for _ in range(len(embeddings))]
-        result = self._collection.query(
-            query_embeddings=embeddings, n_results=n, include=["distances", "metadatas"]
-        )
+        result = self._query(embeddings, n)
         hits: list[list[VectorHit]] = []
         for ids, dists, metas in zip(
             result["ids"], result["distances"] or [], result["metadatas"] or [], strict=True
@@ -128,6 +157,51 @@ class VectorStore:
                 ]
             )
         return hits
+
+    def _query(self, embeddings: Matrix, n: int) -> Any:
+        """HNSW query, with an exact search as the fallback for a Chroma 1.x failure.
+
+        Rarely (about once in 50 freshly built indexes in one process, in plain Chroma too),
+        a collection's vector segment fails with "Nothing found on disk" and keeps failing;
+        reading its stored vectors fails the same way. Documents and metadata stay readable.
+        So after two quick retries the stored texts are re-embedded (the embedding cache
+        makes that nearly free) and searched exactly. At this corpus size that is as fast as
+        HNSW and returns the true neighbours. Any other error is raised at once.
+        """
+        for attempt in range(_QUERY_ATTEMPTS):
+            try:
+                return self._collection.query(
+                    query_embeddings=embeddings, n_results=n, include=["distances", "metadatas"]
+                )
+            except chromadb.errors.InternalError as exc:
+                if "Nothing found on disk" not in str(exc):
+                    raise
+                time.sleep(0.05 * 2**attempt)
+        logger.warning("Chroma HNSW reader failed for %s; using exact search", self.collection_name)
+        return self._exact_query(embeddings, n)
+
+    def _exact_query(self, embeddings: Matrix, n: int) -> dict[str, Any]:
+        """Brute-force cosine search over every stored record, shaped like a Chroma result."""
+        if self._embed is not None:
+            data = self._collection.get(include=["documents", "metadatas"])
+            stored = np.asarray(self._embed([d or "" for d in data["documents"] or []]))
+        else:
+            data = self._collection.get(include=["embeddings", "metadatas"])
+            stored = np.asarray(data["embeddings"])
+        ids: list[str] = list(data["ids"])
+        stored = stored.astype(np.float32).reshape(len(ids), -1)
+        stored /= np.maximum(np.linalg.norm(stored, axis=1, keepdims=True), 1e-12)
+        queries = np.asarray(embeddings, dtype=np.float32)
+        queries /= np.maximum(np.linalg.norm(queries, axis=1, keepdims=True), 1e-12)
+        sims = queries @ stored.T
+        metas = list(data["metadatas"] or [{}] * len(ids))
+        result: dict[str, Any] = {"ids": [], "distances": [], "metadatas": []}
+        for row in sims:
+            top = np.argsort(-row, kind="stable")[:n]
+            result["ids"].append([ids[i] for i in top])
+            result["distances"].append([1.0 - float(row[i]) for i in top])
+            result["metadatas"].append([metas[i] for i in top])
+        return result
 
     def reset(self) -> None:
         self._client.delete_collection(self.collection_name)

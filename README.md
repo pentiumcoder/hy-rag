@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Runs locally](https://img.shields.io/badge/runs-100%25%20locally-purple)
 
-> **Status: Day 3 of 5.** Ingestion, hybrid retrieval and grounded answers with verified citations are done. See the [roadmap](docs/ROADMAP.md) for what's next.
+> **Status: Day 4 of 5.** Retrieval, verified answers, a 55-question evaluation and the HTTP API are done. See the [roadmap](docs/ROADMAP.md) for what's next.
 
 ## Why this exists
 
@@ -20,7 +20,7 @@ Most RAG demos embed one PDF and call it done. Real internal docs are messier:
 
 hy-rag treats those as first-class engineering problems and measures every design decision against a golden evaluation set.
 
-## What works today (v0.3.0)
+## What works today (v0.4.0)
 
 | Capability | Details |
 |---|---|
@@ -34,7 +34,9 @@ hy-rag treats those as first-class engineering problems and measures every desig
 | Grounded answers | `qwen2.5:7b` on Ollama answers only from the retrieved passages, with a `[n]` citation after every sentence and bullet, or says the context is insufficient |
 | Verified citations | A judge from a different model family (`llama3.1:8b`) labels every claim–citation pair SUPPORTED, PARTIAL or UNSUPPORTED in one batched call. Citations of passages that don't exist are rejected without asking it. |
 | Confidence score | `0.4 × retrieval + 0.4 × citation coverage + 0.2 × completeness`, always shown with its breakdown |
-| Structured abstention | When retrieval is weak, nothing is generated. The response lists what was found, what is missing and the closest documents. |
+| Layered abstention | Off-topic questions are refused before generation, the generator declines near-misses, and the judge withdraws answers the passages do not support. Every refusal lists what was found, what is missing and the closest documents. Thresholds are tuned on the eval set. |
+| Evaluation suite | 55 golden questions (lookup, multi-hop, exact-term, unanswerable, ambiguous), 18 retrieval configs and 4 answer configs, with recall@k, MRR, LLM-graded correctness, faithfulness, citation accuracy and abstention precision/recall |
+| HTTP API | FastAPI with `/v1/ask` (per-request overrides, such as hybrid vs dense), `/v1/search`, `/v1/documents`, `/v1/ingest` (upload) and `/v1/eval/summary`, plus OpenAPI docs at `/docs` |
 | Sample corpus | 26 internal docs for the fictional company *Northwind Cloud*, covering runbooks, config and API references, policies and postmortems, across all 4 formats |
 
 ### Why hybrid: a real example from this corpus
@@ -61,20 +63,45 @@ $ hyrag search "NW-4290" -k 3
 
 [ADR-0002](docs/adr/0002-hybrid-retrieval-and-rrf.md) explains the fusion design, including why the default weights are equal rather than 0.7 / 0.3.
 
+## Evaluation results
+
+All numbers come from `hyrag eval` on the 55-question [golden set](eval/golden.jsonl), with the local models. Full report: [eval/results/report.md](eval/results/report.md).
+
+**Retrieval** (recall@5 = share of a question's gold evidence in the top 5 chunks, over the 47 answerable questions):
+
+| | dense | sparse (BM25) | hybrid (RRF) |
+|---|---|---|---|
+| recursive chunks | 84.0% | 92.5% | 92.5% |
+| recursive + cross-encoder rerank | 96.8% | 98.9% | **98.9%** |
+| fixed + rerank | 93.6% | 97.9% | 97.9% |
+| semantic + rerank | 92.5% | 94.7% | 93.6% |
+
+- The reranker adds 3 to 13 points to every configuration.
+- Dense search alone misses the most, especially on multi-hop questions: 67 to 71% before reranking.
+- Header-aware recursive chunks beat embedding-based semantic chunks on this corpus.
+
+**Answers** (`qwen2.5:7b` answering, `llama3.1:8b` checking citations and grading against the reference answers):
+
+| config | correct (of answered) | faithfulness | citation accuracy | answered | abstention precision / recall |
+|---|---|---|---|---|---|
+| **recursive / hybrid** | **91.3%** | 97.5% | 83.9% | 97.9% | 88.9% / 100% |
+| recursive / dense | 89.1% | 96.0% | 83.9% | 97.9% | 88.9% / 100% |
+| fixed / hybrid | 87.2% | 96.3% | 86.8% | 100% | 100% / 100% |
+| semantic / hybrid | 83.3% | 94.9% | 81.8% | 95.7% | 77.8% / 87.5% |
+
+**Abstention:** 31 of the 32 unanswerable cases were refused, and 1 slipped through. Off-topic questions are refused before any generation. The Team-plan kind of near-miss is caught by the generator and the judge, because no retrieval score can separate it from a real answer. Every layer was tuned by replaying the recorded runs; see [ADR-0004](docs/adr/0004-tuned-abstention-policy.md).
+
+| abstention policy | answered wrongly (of 220) | utility |
+|---|---|---|
+| none | 41 | +0.36 |
+| Day 3: retrieval gate + generator | 7 | +0.67 |
+| tuned: + judge answerability check, gate at the middle of its flat range | **6** | **+0.68** |
+
+These are small-sample numbers: 55 questions, graded by a 7B judge that got 3 of its 5 INCORRECT verdicts wrong when checked by hand. Read them as comparisons between configurations rather than as absolute scores.
+
 ### Answers that show their work
 
-A first sample of 12 questions, run with the local models. The full 55-question evaluation comes in Phase 4.
-
-| question | outcome | confidence |
-|---|---|---|
-| How many PTO days carry over to next year? | answered, 1/1 sentences supported | 1.00 |
-| What error do I get when a batch exceeds `ingest.max_batch_size`? | answered, 2/2 supported | 1.00 |
-| What should I do when `CertExpiringSoon` fires? | answered, 3 of 4 steps fully supported; 2 stray citations flagged | 0.85 |
-| What is the per diem for travel meals? | answered and supported, plus one "not covered" sentence | 0.81 |
-| How much does the Team plan cost? *(there is no Team plan)* | **abstained**: the generator found the pricing page but no Team plan | 0.27 |
-| Who won the 2022 football world cup? | **abstained before generating**: best rerank logit −10.8 | 0.01 |
-
-Of the 12, all 8 answerable questions were answered (confidence 0.81–1.00), and all 4 unanswerable ones abstained: 2 at the retrieval gate and 2 by the generator. When the model cites the wrong passage, the judge says so:
+When the model cites the wrong passage, the judge says so:
 
 ```text
 $ hyrag ask "What should I do when CertExpiringSoon fires?"
@@ -108,6 +135,15 @@ hyrag chunk --compare                               # chunking statistics per st
 ollama pull qwen2.5:7b && ollama pull llama3.1:8b   # generator and judge, about 9.6 GB
 hyrag ask "How many PTO days carry over to next year?"
 hyrag ask "What does a SEV1 incident require?" --json --no-verify
+
+hyrag eval --offline                                # the eval with fake models, ~20 s
+hyrag eval                                          # the full eval with the local models
+hyrag serve                                         # API on http://127.0.0.1:8000 (docs at /docs)
+```
+
+```bash
+curl -s localhost:8000/v1/ask -H 'Content-Type: application/json'   -d '{"query": "NW-4290", "overrides": {"mode": "dense"}}'
+curl -s localhost:8000/v1/ingest -F files=@my-runbook.md
 ```
 
 The first `ingest` downloads the two local retrieval models (about 150 MB) into `.cache/models/`. `hyrag ask` needs [Ollama](https://ollama.com) running; with 8 GB of VRAM the two LLMs take turns on the GPU, so an answer takes 15–30 s, and repeated questions come from the response cache in `data/cache/`. To use a hosted model instead, set `HYRAG_LLM_PROVIDER=openai` or `anthropic` and install the matching extra.
@@ -123,8 +159,11 @@ src/hyrag/
   retrieval/   reciprocal rank fusion, cross-encoder reranker, HybridRetriever
   llm/         Ollama, OpenAI and Anthropic chat clients, response cache, test stub
   generation/  prompts, claim parsing, citation verifier, confidence, abstention, AnswerPipeline
+  evaluation/  golden set, metrics, correctness judge, abstention policy tuning, reports
+  api/         FastAPI service
   cli.py       `hyrag` command-line interface
 data/corpus/   Northwind Cloud sample documentation
+eval/          golden questions and committed results (report, charts, per-question runs)
 scripts/       sample-PDF generator and its plain-text sources
 docs/          roadmap and architecture decision records
 ```
@@ -137,15 +176,17 @@ mypy
 pytest --cov                                 # fast, offline: fake embedder, stub LLM, no reranker
 HYRAG_TEST_MODELS=1 pytest -m models         # retrieval with the real local models
 HYRAG_TEST_LLM=1 pytest -m llm               # answering end to end, needs Ollama running
+hyrag eval --offline --min-recall 0.85       # what CI runs on every pull request
 ```
 
-CI runs the same checks on Python 3.11, 3.12 and 3.13. The default test run uses a deterministic fake embedder and an extractive stub model that plays both generator and judge, so the whole pipeline runs with no network, models or API keys.
+CI runs the same checks on Python 3.11, 3.12 and 3.13. The default test run uses a deterministic fake embedder and an extractive stub model that plays both generator and judge, so the whole pipeline runs with no network, models or API keys. A separate CI job runs the offline evaluation and fails if retrieval recall drops.
 
 ## Design decisions
 
 - [ADR-0001: Three switchable chunking strategies](docs/adr/0001-chunking-strategies.md)
 - [ADR-0002: Hybrid retrieval with equal-weight RRF and a cross-encoder rerank](docs/adr/0002-hybrid-retrieval-and-rrf.md)
 - [ADR-0003: Batched cross-family citation checks, confidence and abstention](docs/adr/0003-verified-citations-confidence-abstention.md)
+- [ADR-0004: A layered abstention policy, tuned on the evaluation set](docs/adr/0004-tuned-abstention-policy.md)
 
 ## License
 
