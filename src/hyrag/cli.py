@@ -17,6 +17,7 @@ from hyrag import __version__
 from hyrag.chunking import get_chunker
 from hyrag.config import get_settings
 from hyrag.embeddings import embedder_from_settings
+from hyrag.evaluation import DEFAULT_GOLDEN, run_suite
 from hyrag.generation import AnswerPipeline
 from hyrag.index import Duplicate, IndexManager, IndexMismatchError
 from hyrag.ingestion import DocumentStore, load_corpus
@@ -317,6 +318,94 @@ def _print_answer(r: AnswerResponse) -> None:
     roles = (("generator", r.generator), ("judge", r.judge))
     models = "  ".join(f"{role} {name}" for role, name in roles if name)
     console.print(Text(f"{r.mode.value} / {r.strategy.value}  {models}  {timings}", style="dim"))
+
+
+@app.command("eval")
+def eval_command(
+    offline: Annotated[
+        bool,
+        typer.Option(help="Fake embedder and stub LLM in a scratch directory: no models needed."),
+    ] = False,
+    retrieval_only: Annotated[
+        bool, typer.Option("--retrieval-only", help="Skip generation (seconds instead of an hour).")
+    ] = False,
+    output: Annotated[
+        Path | None, typer.Option("--output", "-o", help="Default: HYRAG_EVAL_RESULTS_DIR.")
+    ] = None,
+    golden: Annotated[Path, typer.Option(help="Golden question set.")] = DEFAULT_GOLDEN,
+    limit: Annotated[int | None, typer.Option(help="Only the first N questions.")] = None,
+    charts: Annotated[bool, typer.Option(help="Write PNG charts.")] = True,
+    min_recall: Annotated[
+        float | None, typer.Option(help="Exit 1 if the best recall@5 is below this.")
+    ] = None,
+) -> None:
+    """Score retrieval on every configuration and answers on a selected few."""
+    settings = get_settings()
+    out_dir = output or settings.eval_results_dir
+    with console.status("Evaluating...") as status:
+        summary = run_suite(
+            settings,
+            out_dir,
+            golden=golden,
+            generation=not retrieval_only,
+            offline=offline,
+            limit=limit,
+            charts=charts,
+            progress=lambda message: status.update(f"Evaluating: {message}"),
+        )
+
+    table = Table(title=f"Retrieval ({summary['mode']}, answerable questions)")
+    for col in ("config", "recall@1", "recall@5", "MRR"):
+        table.add_column(col, justify="left" if col == "config" else "right")
+    for row in summary["retrieval"]["configs"]:
+        table.add_row(
+            row["config"],
+            f"{row['recall_at_1']:.1%}",
+            f"{row['recall_at_5']:.1%}",
+            f"{row['mrr']:.3f}",
+        )
+    console.print(table)
+
+    generation = summary.get("generation")
+    if generation:
+        table = Table(title="Answers (tuned abstention policy)")
+        for col in ("config", "answered", "correct", "faithful", "citations", "abstain P/R"):
+            table.add_column(col, justify="left" if col == "config" else "right")
+        for row in generation["configs"]:
+            table.add_row(
+                row["config"],
+                f"{row['answered_rate']:.0%}",
+                f"{row['correctness']:.0%}",
+                f"{row['faithfulness']:.0%}",
+                f"{row['citation_accuracy']:.0%}",
+                f"{row['abstention_precision']:.0%}/{row['abstention_recall']:.0%}",
+            )
+        console.print(table)
+        policy = generation["policy"]
+        console.print(
+            f"tuned policy: abstain_threshold={policy['abstain_threshold']} "
+            f"answer_threshold={policy['answer_threshold']} judge_check={policy['judge_check']}"
+        )
+    console.print(f"[green]wrote[/] {out_dir / 'report.md'} and {out_dir / 'summary.json'}")
+
+    best = (
+        summary["retrieval"]["configs"][0]["recall_at_5"] if summary["retrieval"]["configs"] else 0
+    )
+    if min_recall is not None and best < min_recall:
+        console.print(f"[red]best recall@5 {best:.1%} is below --min-recall {min_recall:.1%}[/]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def serve(
+    host: Annotated[str, typer.Option(help="Interface to bind.")] = "127.0.0.1",
+    port: Annotated[int, typer.Option(help="Port to listen on.")] = 8000,
+    reload: Annotated[bool, typer.Option(help="Reload on code changes (development).")] = False,
+) -> None:
+    """Run the HTTP API (OpenAPI docs at /docs)."""
+    import uvicorn
+
+    uvicorn.run("hyrag.api:create_app", factory=True, host=host, port=port, reload=reload)
 
 
 if __name__ == "__main__":  # pragma: no cover
