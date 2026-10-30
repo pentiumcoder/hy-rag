@@ -166,3 +166,37 @@ def test_unknown_claim_kinds_are_skipped() -> None:
     gap = Claim(index=1, text="The context does not cover it.", citations=[1], kind="gap")
     result = CitationVerifier(ScriptedLLM()).verify(QUESTION, "x", [gap], _contexts())
     assert result.checks == []
+
+
+def test_the_judge_sees_every_retrieved_passage_and_rates_answerability() -> None:
+    answer = "Up to 5 days carry over [1]."
+    reply = json.dumps(
+        {
+            "checks": [{"id": 1, "label": "SUPPORTED"}],
+            "completeness": "COMPLETE",
+            "answerable": "partial",
+        }
+    )
+    judge = ScriptedLLM([reply])
+    result = CitationVerifier(judge).verify(QUESTION, answer, extract_claims(answer), _contexts())
+    assert result.answerability == 0.5
+    prompt = judge.calls[0].messages[1]["content"]
+    assert all(f'<passage id="{n}"' in prompt for n in (1, 2, 3))  # uncited [2] and [3] too
+
+    unknown = CitationVerifier(ScriptedLLM([_judge_reply((1, "SUPPORTED"))])).verify(
+        QUESTION, answer, extract_claims(answer), _contexts()
+    )
+    assert unknown.answerability is None
+
+
+def test_the_stub_judge_rates_answerability_by_question_coverage() -> None:
+    def answerability(question: str) -> float | None:
+        answer = "Up to 5 unused PTO days can be carried over [1]."
+        return (
+            CitationVerifier(ExtractiveStubLLM())
+            .verify(question, answer, extract_claims(answer), _contexts())
+            .answerability
+        )
+
+    assert answerability(QUESTION) == 1.0
+    assert answerability("Which dentist covers the Mars office?") == 0.0

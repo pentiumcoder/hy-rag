@@ -1,6 +1,6 @@
 # ADR-0003: Batched cross-family citation checks, a composite confidence score, and abstaining before generation
 
-- **Status:** Accepted
+- **Status:** Accepted; the abstention threshold is superseded by [ADR-0004](0004-tuned-abstention-policy.md)
 - **Date:** 2026-10-29
 
 ## Context

@@ -4,6 +4,38 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-30
+
+### Added
+
+- Golden evaluation set `eval/golden.jsonl` with 55 questions: 20 lookup, 12 multi-hop, 10 exact-term, 8 unanswerable, 5 ambiguous. Each has a reference answer, required key facts and verbatim evidence quotes, and the tests check that every quote exists and survives chunking under all three strategies.
+- `hyrag eval`:
+  - recall@1, recall@5 and MRR on all 18 retrieval configurations (3 chunking strategies x dense/sparse/hybrid x with and without reranking)
+  - answer metrics on 4 generation configurations: LLM-graded correctness, faithfulness, citation accuracy, key-fact recall, and abstention precision and recall
+  - output: `summary.json`, `report.md`, PNG charts and per-question runs
+- Abstention policy replay: generation runs once with every abstention rule off, then the retrieval gate, judge check and confidence floor are tuned offline by utility (+1 correct, -2 wrong).
+- Judge answerability check. The batched verification call also rates whether the retrieved passages answer the question, and an answer the judge calls unanswerable with no supported sentence is withdrawn and kept as `draft_answer`.
+- `AnswerPipeline.generate()` and `AnswerPipeline.verify()`, so batch jobs can run all generations, then all verifications, without swapping models on the GPU.
+- FastAPI service (`hyrag serve`):
+  - `POST /v1/ask`, with overrides
+  - `POST /v1/search`
+  - `GET /v1/documents`
+  - `POST /v1/ingest`, for file uploads
+  - `GET /v1/eval/summary`
+  - `GET /health`
+  - OpenAPI docs and CORS for the dashboard dev server
+- CI job running the offline evaluation on every pull request, failing if the best recall@5 drops below 85%.
+- Committed results in `eval/results/`, and ADR-0004 on the tuned abstention policy.
+
+### Changed
+
+- The default `abstain_threshold` is 0.3 (was 0.2), the middle of the range that is equally good on the eval set. `answer_threshold` stays 0, because no confidence floor improved utility.
+- Sentences such as "X is not explicitly mentioned in the passages" are now recognized as gaps.
+
+### Fixed
+
+- Dense queries could fail with "Nothing found on disk" when Chroma 1.x lost a freshly built collection's vector segment, about once in 50 index builds in one process. Queries now fall back to exact search over the stored texts, re-embedded through the embedding cache. Every VectorStore on a directory now also shares one Chroma client.
+
 ## [0.3.0] - 2026-10-29
 
 ### Added
@@ -53,7 +85,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - CI on Python 3.11 to 3.13 (ruff, mypy strict, pytest with coverage), pre-commit hooks, Dependabot and community health files.
 - ADR-0001 on the chunking strategies, and the project roadmap.
 
-[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/pentiumcoder/hy-rag/releases/tag/v0.1.0

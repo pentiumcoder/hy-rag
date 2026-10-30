@@ -24,7 +24,7 @@ def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "hyrag 0.3.0" in result.output
+    assert "hyrag 0.4.0" in result.output
 
 
 def test_load_then_reload(corpus_dir: Path) -> None:
@@ -143,3 +143,46 @@ def test_ask_reports_an_embedder_mismatch(
     get_settings.cache_clear()
     result = runner.invoke(app, ["ask", "anything"])
     assert result.exit_code == 1 and "was built with" in result.output
+
+
+def test_eval_offline_writes_the_report(tmp_path: Path) -> None:
+    out = tmp_path / "results"
+    result = runner.invoke(
+        app, ["eval", "--offline", "--limit", "6", "--no-charts", "-o", str(out)]
+    )
+    assert result.exit_code == 0, result.output
+    for text in ("Retrieval (offline", "recursive/hybrid", "tuned policy", "report.md"):
+        assert text in result.output
+    assert (out / "summary.json").exists() and not (out / "charts").exists()
+
+
+def test_eval_min_recall_gate(tmp_path: Path) -> None:
+    result = runner.invoke(
+        app,
+        [
+            "eval",
+            "--offline",
+            "--retrieval-only",
+            "--limit",
+            "3",
+            "--no-charts",
+            "-o",
+            str(tmp_path),
+            "--min-recall",
+            "1.01",
+        ],
+    )
+    assert result.exit_code == 1 and "below --min-recall" in result.output
+
+
+def test_serve_starts_uvicorn_with_the_app_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    monkeypatch.setattr("uvicorn.run", lambda *a, **kw: calls.append((a, kw)))
+    result = runner.invoke(app, ["serve", "--port", "9000"])
+    assert result.exit_code == 0, result.output
+    assert calls == [
+        (
+            ("hyrag.api:create_app",),
+            {"factory": True, "host": "127.0.0.1", "port": 9000, "reload": False},
+        )
+    ]
