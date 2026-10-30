@@ -70,9 +70,19 @@ class Settings(BaseSettings):
     verify_citations: bool = True
     # Below this retrieval confidence nothing is generated and the answer is a structured
     # abstention. Rerank logits map to [0, 1] with sigmoid((logit - center) / scale).
-    abstain_threshold: float = Field(default=0.2, ge=0, le=1)
+    # 0.3 is the middle of the range that is equally good on the eval set (ADR-0004).
+    abstain_threshold: float = Field(default=0.3, ge=0, le=1)
     rerank_center: float = -4.0
     rerank_scale: float = Field(default=2.0, gt=0)
+    # After verification: withdraw the answer if the judge says the passages do not answer the
+    # question and no sentence is supported, or if confidence is below answer_threshold. The
+    # eval found no floor that helps (it drops correct answers as fast as wrong ones), so 0.
+    abstain_on_unanswerable: bool = True
+    answer_threshold: float = Field(default=0.0, ge=0, le=1)
+
+    # Evaluation and API.
+    eval_results_dir: Path = Path("eval/results")
+    api_cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     @model_validator(mode="after")
     def _check_sizes(self) -> Settings:

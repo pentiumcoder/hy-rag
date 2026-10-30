@@ -23,7 +23,8 @@ _SOURCE = r"\b(?:context|passages?|documents?|documentation|sources?)\b"
 _GAP = re.compile(
     rf"{_SOURCE}.{{0,60}}?\b(?:does not|do not|doesn't|don't|did not)\b.{{0,30}}?"
     r"\b(?:cover|mention|say|state|include|contain|specify|provide|describe|address|detail)"
-    rf"|\bnot (?:mentioned|covered|specified|provided|stated|described|included)\b.{{0,40}}?"
+    r"|\bnot (?:\w+ly )?(?:mentioned|covered|specified|provided|stated|described|included)\b"
+    rf".{{0,40}}?"
     rf"{_SOURCE}"
     r"|\b(?:there is|there's) no (?:information|mention|detail)",
     re.IGNORECASE,

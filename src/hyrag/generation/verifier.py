@@ -17,6 +17,7 @@ from hyrag.llm import LLMClient, LLMError, complete_json
 from hyrag.models import Chunk, CitationCheck, Claim, ClaimLabel, ScoredChunk, VerdictLabel
 
 COMPLETENESS = {"COMPLETE": 1.0, "PARTIAL": 0.5, "INCOMPLETE": 0.0}
+ANSWERABLE = {"YES": 1.0, "PARTIAL": 0.5, "NO": 0.0}
 _RANK: dict[str, int] = {"SUPPORTED": 3, "PARTIAL": 2, "UNVERIFIED": 1, "UNSUPPORTED": 0}
 _ALIASES: dict[str, VerdictLabel] = {
     "SUPPORTED": "SUPPORTED",
@@ -33,6 +34,7 @@ _ALIASES: dict[str, VerdictLabel] = {
 class Verification:
     checks: list[CitationCheck] = field(default_factory=list)
     completeness: float | None = None  # None when the judge was not asked
+    answerability: float | None = None  # do the passages answer the question at all?
     error: str | None = None
 
 
@@ -104,7 +106,9 @@ class CitationVerifier:
                     CitationCheck(claim=claim_of[p.id], citation=p.citation, label="UNVERIFIED")
                 )
         elif pairs and self.judge is not None:
-            passages: dict[int, Chunk] = {p.citation: contexts[p.citation - 1].chunk for p in pairs}
+            # Every retrieved passage, not only the cited ones: answerability is a judgement
+            # about what retrieval found, and a correct fact may sit in an uncited passage.
+            passages: dict[int, Chunk] = {i: sc.chunk for i, sc in enumerate(contexts, start=1)}
             messages = build_judge_messages(question, answer, passages, pairs)
             try:
                 data = complete_json(
@@ -125,6 +129,8 @@ class CitationVerifier:
                 )
             completeness = str(data.get("completeness") or "").strip().upper()
             result.completeness = COMPLETENESS.get(completeness)
+            answerable = str(data.get("answerable") or "").strip().upper()
+            result.answerability = ANSWERABLE.get(answerable)
 
         result.checks = sorted(checks, key=lambda c: (c.claim, c.citation))
         return result

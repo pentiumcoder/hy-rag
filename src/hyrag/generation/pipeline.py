@@ -118,11 +118,22 @@ class AnswerPipeline:
         return self._retrievers[strategy]
 
     def ask(self, query: str, overrides: AskOverrides | None = None) -> AnswerResponse:
+        response = self.generate(query, overrides)
+        if response.abstained:
+            return response
+        return self.verify(response, overrides)
+
+    def generate(self, query: str, overrides: AskOverrides | None = None) -> AnswerResponse:
+        """Steps 1-3: retrieve, gate and generate. The answer is not verified yet.
+
+        Split from :meth:`verify` so a batch job (the eval suite) can generate every answer
+        while the generator is loaded and verify them all afterwards, instead of swapping
+        the two models on the GPU for every question.
+        """
         o = overrides or AskOverrides()
         s = self.settings
         mode = o.mode or RetrievalMode.HYBRID
         strategy = o.strategy or self.default_strategy
-        verify = (s.verify_citations if o.verify is None else o.verify) and self.judge is not None
         threshold = s.abstain_threshold if o.abstain_threshold is None else o.abstain_threshold
         clock = _Clock()
 
@@ -142,7 +153,6 @@ class AnswerPipeline:
             mode=mode,
             strategy=strategy,
             generator=self.generator.name,
-            judge=self.judge.name if verify and self.judge else None,
         )
 
         if not contexts:
@@ -190,29 +200,98 @@ class AnswerPipeline:
                 "The generator found that the retrieved passages do not answer the question.",
                 missing=[c.text for c in claims],
             )
+        response.answer = raw
+        response.abstained = False
+        response.claims = claims
+        response.timings_ms = clock.done()
+        return response
+
+    def verify(
+        self, response: AnswerResponse, overrides: AskOverrides | None = None
+    ) -> AnswerResponse:
+        """Steps 4-6: verify citations, score confidence, and apply the post-answer policy.
+
+        After verification the answer is still withdrawn (and kept as ``draft_answer``) if
+        the judge finds the passages do not answer the question and no sentence is
+        supported, or if the verified confidence is below ``answer_threshold``. Retrieval
+        scores cannot tell a near-miss passage from an answering one (ADR-0003); the judge,
+        which reads the passages, can (ADR-0004).
+        """
+        if response.abstained or response.answer is None:
+            return response
+        o = overrides or AskOverrides()
+        s = self.settings
+        verify = (s.verify_citations if o.verify is None else o.verify) and self.judge is not None
+        floor = s.answer_threshold if o.answer_threshold is None else o.answer_threshold
+        start = time.perf_counter()
+
         verifier = CitationVerifier(
             self.judge if verify else None,
             max_tokens=s.judge_max_tokens,
             temperature=s.llm_temperature,
         )
-        verification = verifier.verify(query, raw, claims, contexts)
-        if verify:
-            clock.lap("verify")
-        claims = label_claims(claims, verification.checks)
-
+        verification = verifier.verify(
+            response.query, response.answer, response.claims, response.contexts
+        )
+        claims = label_claims(response.claims, verification.checks)
         completeness = 0.5 if verification.completeness is None else verification.completeness
+        timings = dict(response.timings_ms)
+        if verify:
+            timings["verify"] = round((time.perf_counter() - start) * 1000, 1)
+            timings["total"] = round(timings.get("total", 0.0) + timings["verify"], 1)
 
-        response.answer = raw
-        response.abstained = False
-        response.claims = claims
-        response.checks = verification.checks
-        response.citations = _citations(claims, verification.checks, contexts)
-        response.confidence = combine(retrieval, citation_coverage(claims), completeness, signal)
-        response.warnings = _warnings(claims, verification.checks, len(contexts), verify)
+        confidence = combine(
+            response.confidence.retrieval,
+            citation_coverage(claims),
+            completeness,
+            response.confidence.retrieval_signal,
+            answerability=verification.answerability,
+        )
+        result = response.model_copy(
+            update={
+                "claims": claims,
+                "checks": verification.checks,
+                "citations": _citations(claims, verification.checks, response.contexts),
+                "confidence": confidence,
+                "warnings": _warnings(claims, verification.checks, len(response.contexts), verify),
+                "judge": self.judge.name if verify and self.judge else None,
+                "timings_ms": timings,
+            }
+        )
         if verification.error:
-            response.warnings.append(f"Citation verification failed: {verification.error}")
-        response.timings_ms = clock.done()
-        return response
+            result.warnings.append(f"Citation verification failed: {verification.error}")
+        if not verify:
+            return result
+
+        supported = any(c.label == "SUPPORTED" for c in claims)
+        if s.abstain_on_unanswerable and verification.answerability == 0.0 and not supported:
+            return self._withdraw(
+                result,
+                "unanswerable",
+                "The judge found that the retrieved passages do not answer the question, and "
+                "no sentence of the draft answer is supported by them.",
+            )
+        if confidence.score < floor:
+            return self._withdraw(
+                result,
+                "low_answer_confidence",
+                f"The verified answer scored too low (confidence {confidence.score:.2f} < "
+                f"{floor:.2f}) to show as an answer.",
+            )
+        return result
+
+    def _withdraw(
+        self, response: AnswerResponse, reason: AbstentionReason, message: str
+    ) -> AnswerResponse:
+        """Turn a generated answer into an abstention, keeping the draft for inspection."""
+        missing = [c.text for c in response.claims if c.kind == "gap"]
+        abstention = build_abstention(
+            reason, message, response.query, response.contexts, missing=missing
+        )
+        abstention.draft_answer = response.answer
+        return response.model_copy(
+            update={"answer": None, "abstained": True, "abstention": abstention}
+        )
 
     def _abstain(
         self,
