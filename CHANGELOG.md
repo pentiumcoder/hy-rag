@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-31
+
+### Added
+
+- React dashboard (`frontend/`, Vite + TypeScript + Tailwind + Recharts):
+  - **Ask:** answers with clickable `[n]` citations that scroll to and highlight the passage, per-sentence verdicts, confidence breakdown bars, the ranked passages with dense, BM25, RRF and rerank scores, and side-by-side hybrid vs dense with a rerank toggle.
+  - **Evaluation:** recall charts, answer quality per configuration and the abstention ablation.
+  - **Documents:** the document list with drag-and-drop upload.
+  - Tested with Vitest and Testing Library.
+- Docker Compose with `ollama`, `api` and `frontend` (nginx) services, health checks and named volumes:
+  - The CPU default uses `qwen2.5:3b` and `llama3.2:3b`.
+  - `docker-compose.gpu.yml` switches to `qwen2.5:7b` and `llama3.1:8b` on an NVIDIA GPU.
+- `scripts/seed.py`, which indexes the corpus and pulls missing Ollama models on first boot. It is idempotent, so restarts take seconds.
+- CI jobs for the dashboard (types, tests, build) and for building both Docker images, plus Dependabot for npm and Docker.
+- `docs/case-study.md`, `docs/demo-script.md`, ADR-0005 on deployment, and a results-first README with an architecture diagram and screenshots.
+
+### Fixed
+
+- `hyrag eval` no longer rebuilds the served index. It uses its own `data/eval-index`, so documents uploaded through the API stay searchable after an eval run.
+
 ## [0.4.0] - 2026-10-30
 
 ### Added
@@ -85,7 +105,8 @@ All notable changes to this project are documented here. The format follows [Kee
 - CI on Python 3.11 to 3.13 (ruff, mypy strict, pytest with coverage), pre-commit hooks, Dependabot and community health files.
 - ADR-0001 on the chunking strategies, and the project roadmap.
 
-[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.4.0...v1.0.0
 [0.4.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.1.0...v0.2.0

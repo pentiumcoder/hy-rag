@@ -60,6 +60,10 @@ def offline_settings(settings: Settings, data_dir: Path) -> Settings:
     )
 
 
+def eval_index_dir(settings: Settings) -> Path:
+    return settings.data_dir / "eval-index"
+
+
 def generation_configs(retrieval_summary: Sequence[dict[str, Any]]) -> list[GenerationConfig]:
     """Hybrid on every strategy, plus dense-only on the strategy with the best hybrid recall."""
     hybrid = [r for r in retrieval_summary if r["mode"] == "hybrid"]
@@ -116,6 +120,11 @@ def run_suite(
     try:
         if scratch is not None:
             settings = offline_settings(settings, Path(scratch.name))
+        else:
+            # A separate index, so the eval scores exactly the corpus the golden set describes
+            # and never rebuilds the served index (which also holds uploaded documents).
+            # The embedding cache is shared, so rebuilding it is nearly free.
+            settings = settings.model_copy(update={"index_path": eval_index_dir(settings)})
         embedder = embedder_from_settings(settings)
         reranker = get_reranker(
             settings.reranker, settings.reranker_model, settings.model_cache_dir

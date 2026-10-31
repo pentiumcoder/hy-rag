@@ -22,7 +22,9 @@ htmlcov/
 data/raw/
 data/processed/
 data/index/
+data/eval-index/
 data/cache/
+data/uploads/
 .chroma/
 .cache/
 *.pkl

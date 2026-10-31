@@ -1,0 +1,63 @@
+# hy-rag: API, dashboard and Ollama.
+#
+#   docker compose up --build                     # CPU: qwen2.5:3b answers, llama3.2:3b judges
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+#                                                 # NVIDIA GPU: qwen2.5:7b + llama3.1:8b
+#
+# Dashboard on http://localhost:8080, API docs on http://localhost:8000/docs. The first start
+# downloads the Ollama image and the models (about 14 GB on disk with the CPU models, 6 GB more
+# with the GPU file) and indexes the corpus; restarts take about 15 seconds.
+#
+# Chroma runs embedded in the API container, next to BM25, so a single process owns both
+# indexes (see docs/adr/0005-deployment.md).
+
+name: hyrag
+
+services:
+  ollama:
+    image: ollama/ollama:0.40.13
+    volumes:
+      - ollama:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: 30m
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      HYRAG_GENERATOR_MODEL: ${HYRAG_GENERATOR_MODEL:-qwen2.5:3b}
+      HYRAG_JUDGE_MODEL: ${HYRAG_JUDGE_MODEL:-llama3.2:3b}
+      HYRAG_LLM_TIMEOUT: ${HYRAG_LLM_TIMEOUT:-600}
+      HYRAG_API_CORS_ORIGINS: '["http://localhost:8080"]'
+    volumes:
+      - data:/data
+      - models:/models
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+volumes:
+  ollama:
+  data:
+  models:
