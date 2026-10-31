@@ -1,5 +1,5 @@
 # hy-rag dashboard: built with Vite, served by nginx, which also proxies /api to the API.
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci --no-audit --no-fund
