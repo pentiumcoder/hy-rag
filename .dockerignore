@@ -1,0 +1,30 @@
+# Only what the images need goes into the build context.
+.git
+.github
+.venv
+.cache
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.coverage
+**/__pycache__
+data/raw
+data/processed
+data/index
+data/eval-index
+data/cache
+data/uploads
+eval/results/runs
+frontend/node_modules
+frontend/dist
+tests
+docs
+.env
+
+# Private builder/committer files.
+.agent
+.claude
+.vscode
+CLAUDE.md
+AGENTS.md
+IMPLEMENTATION_PLAN.md

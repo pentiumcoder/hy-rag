@@ -1,0 +1,22 @@
+# GPU profile: the full-size models on an NVIDIA GPU (needs the NVIDIA Container Toolkit,
+# or Docker Desktop with WSL 2 GPU support on Windows). Use it on top of the base file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up --build
+#
+# 8 GB of VRAM is enough: Ollama swaps the generator and the judge as needed.
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  api:
+    environment:
+      HYRAG_GENERATOR_MODEL: ${HYRAG_GENERATOR_MODEL:-qwen2.5:7b}
+      HYRAG_JUDGE_MODEL: ${HYRAG_JUDGE_MODEL:-llama3.1:8b}
+      HYRAG_LLM_TIMEOUT: ${HYRAG_LLM_TIMEOUT:-180}

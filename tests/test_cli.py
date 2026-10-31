@@ -24,7 +24,7 @@ def _isolated_data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_version() -> None:
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert "hyrag 0.4.0" in result.output
+    assert "hyrag 1.0.0" in result.output
 
 
 def test_load_then_reload(corpus_dir: Path) -> None:

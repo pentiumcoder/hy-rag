@@ -140,3 +140,38 @@ def test_a_golden_set_that_does_not_match_the_corpus_is_rejected(tmp_path: Path)
     settings = Settings(corpus_dir=CORPUS_DIR, _env_file=None)  # type: ignore[call-arg]
     with pytest.raises(ValueError, match="quote not found"):
         run_suite(settings, tmp_path / "out", golden=path, offline=True)
+
+
+def test_the_eval_never_touches_the_served_index(tmp_path: Path) -> None:
+    """Uploads live only in the served index; an eval run used to rebuild it from the corpus."""
+    from hyrag.embeddings import FakeEmbedder
+    from hyrag.index import IndexManager
+    from hyrag.ingestion import DocumentStore
+
+    settings = Settings(
+        corpus_dir=CORPUS_DIR,
+        data_dir=tmp_path / "data",
+        embedding_provider="fake",
+        reranker="none",
+        llm_provider="stub",
+        _env_file=None,  # type: ignore[call-arg]
+    )
+    upload = tmp_path / "data" / "uploads" / "coffee.md"
+    upload.parent.mkdir(parents=True)
+    upload.write_text("# Coffee\n\nThe espresso machine is called Q-77.\n", encoding="utf-8")
+    store = DocumentStore(settings.data_dir)
+    store.ingest_directory(CORPUS_DIR)
+    store.ingest_files([upload], settings.data_dir)
+    embedder = FakeEmbedder(dim=settings.embedding_dim)
+    served = IndexManager(settings, ChunkStrategy.RECURSIVE, embedder)
+    served.sync(store.load_documents())
+    before = len(served)
+
+    run_suite(settings, tmp_path / "out", generation=False, limit=3, charts=False)
+
+    after = IndexManager(settings, ChunkStrategy.RECURSIVE, embedder)
+    assert len(after) == before
+    assert any(
+        c.source == "uploads/coffee.md" for c in after.get_chunks(after.manifest.chunks).values()
+    )
+    assert (settings.data_dir / "eval-index" / "chroma").is_dir()
