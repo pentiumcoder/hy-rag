@@ -81,7 +81,7 @@ hyrag search "NW-4290" --mode sparse                # retrieval only, every stag
 ollama pull qwen2.5:7b && ollama pull llama3.1:8b   # generator and judge, about 9.6 GB
 hyrag ask "How many PTO days carry over to next year?"
 hyrag serve                                         # API on http://127.0.0.1:8000
-npm --prefix frontend install && npm --prefix frontend run dev   # dashboard on :5173
+npm --prefix frontend install && npm --prefix frontend run dev   # dashboard on :5173 (Node 22.22+)
 hyrag eval                                          # the full evaluation, ~1 h on an 8 GB GPU
 ```
 
