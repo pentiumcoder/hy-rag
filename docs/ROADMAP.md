@@ -43,8 +43,14 @@ hy-rag is built in five phases. Each phase ends with a stable interface that the
 - [x] FastAPI service: `/v1/ask`, `/v1/search`, `/v1/documents`, `/v1/ingest`, `/v1/eval/summary`
 - [x] Offline evaluation in CI on every pull request
 
-## Phase 5: Dashboard and deployment
+## Phase 5: Dashboard and deployment ✅
 
-- [ ] React dashboard: answers with clickable citations, score breakdowns, hybrid vs dense comparison
-- [ ] Docker Compose with API, ChromaDB, Ollama and frontend, plus a seed script
-- [ ] Case study with evaluation results
+- [x] React dashboard: answers with clickable citations, score breakdowns, hybrid vs dense comparison, eval charts, document upload
+- [x] Docker Compose with the API (embedded Chroma, see ADR-0005), Ollama and the dashboard, plus a seed script and a GPU file
+- [x] Case study with evaluation results, and a demo script
+
+## Beyond 1.0
+
+- More near-miss questions in the golden set, and human labels to calibrate the correctness judge
+- A smaller judge, or room for both models on the GPU, to cut verification latency
+- A Chroma server behind `VectorStore` if the index outgrows one machine
