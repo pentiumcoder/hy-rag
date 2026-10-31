@@ -13,12 +13,19 @@ from hyrag.models import ChunkStrategy
 
 
 class Settings(BaseSettings):
+    # Empty values mean "use the default", so a copy of .env.example works as is.
     model_config = SettingsConfigDict(
-        env_prefix="HYRAG_", env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_prefix="HYRAG_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        env_ignore_empty=True,
+        extra="ignore",
     )
 
     corpus_dir: Path = Path("data/corpus")
     data_dir: Path = Path("data")
+    # Where the search indexes live; defaults to <data_dir>/index. The eval uses its own.
+    index_path: Path | None = None
 
     chunk_strategy: ChunkStrategy = ChunkStrategy.RECURSIVE
     chunk_size: int = Field(default=800, ge=100, le=8000)
@@ -104,7 +111,7 @@ class Settings(BaseSettings):
 
     @property
     def index_dir(self) -> Path:
-        return self.data_dir / "index"
+        return self.index_path or self.data_dir / "index"
 
     @property
     def cache_dir(self) -> Path:
