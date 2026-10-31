@@ -20,11 +20,4 @@ frontend/dist
 tests
 docs
 .env
-
-# Private builder/committer files.
-.agent
-.claude
 .vscode
-CLAUDE.md
-AGENTS.md
-IMPLEMENTATION_PLAN.md
