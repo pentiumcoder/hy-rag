@@ -184,7 +184,7 @@ def ablation(records: Sequence[GenerationRecord], tuned: Policy) -> list[tuple[s
     day3 = Policy(abstain_threshold=0.2, answer_threshold=0.0, judge_check=False)
     steps = [
         ("no abstention (generator rule ignored)", None),
-        ("Day 3: retrieval gate 0.2 + generator", day3),
+        ("v0.3.0: retrieval gate 0.2 + generator", day3),
         ("+ judge answerability check", Policy(0.2, 0.0, True)),
         ("tuned", tuned),
     ]

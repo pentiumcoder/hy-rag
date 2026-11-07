@@ -426,7 +426,7 @@
           "by_layer": {}
         },
         {
-          "name": "Day 3: retrieval gate 0.2 + generator",
+          "name": "v0.3.0: retrieval gate 0.2 + generator",
           "policy": {
             "abstain_threshold": 0.2,
             "answer_threshold": 0.0,

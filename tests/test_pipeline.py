@@ -84,7 +84,7 @@ def test_answers_with_verified_citations_offline(indexed: Settings) -> None:
     assert (r.mode, r.strategy) == (RetrievalMode.HYBRID, ChunkStrategy.RECURSIVE)
     assert set(r.timings_ms) == {"retrieve", "generate", "verify", "total"}
     assert len(r.contexts) == indexed.top_k
-    json.loads(r.model_dump_json())  # the API on Day 4 serializes exactly this
+    json.loads(r.model_dump_json())  # the HTTP API serializes exactly this
 
 
 def test_low_retrieval_confidence_abstains_without_generating(indexed: Settings) -> None:

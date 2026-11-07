@@ -56,7 +56,7 @@ What each layer adds, pooled over all configurations. Utility counts a correct a
 | policy | abstention P / R | answered correctly | answered wrongly | utility |
 |---|---|---|---|---|
 | no abstention (generator rule ignored) | never abstains | 161.5 | 41.0 | +0.361 |
-| Day 3: retrieval gate 0.2 + generator | 88.2% / 93.8% | 161.5 | 7.0 | +0.670 |
+| v0.3.0: retrieval gate 0.2 + generator | 88.2% / 93.8% | 161.5 | 7.0 | +0.670 |
 | + judge answerability check | 88.6% / 96.9% | 161.5 | 6.0 | +0.680 |
 | tuned | 88.6% / 96.9% | 161.5 | 6.0 | +0.680 |
 

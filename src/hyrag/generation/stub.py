@@ -9,7 +9,7 @@ end. This stub reads the same prompts the real models get:
   in it, appears in the cited passage.
 
 It is a lexical baseline, not a language model: it cannot paraphrase or reason, which is
-exactly why it makes a good floor for the Day 4 offline eval.
+exactly why it makes a good floor for the offline eval.
 """
 
 from __future__ import annotations
