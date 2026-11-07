@@ -158,7 +158,7 @@ docker/        Dockerfiles and nginx config
 data/corpus/   sample docs for a made-up company, Northwind Cloud
 eval/          test questions and results
 scripts/       first-boot setup script, sample PDF generator
-docs/          case study, demo script, roadmap, design notes
+docs/          case study, demo script, roadmap, screenshots
 ```
 
 ## Development
@@ -173,14 +173,6 @@ npm --prefix frontend test
 ```
 
 The normal test run uses a fake embedder and a simple extractive stand-in for both models, so it needs no network and no GPU. CI runs it on Python 3.11 to 3.13, along with the offline evaluation, the dashboard tests and a build of both Docker images.
-
-## Design notes
-
-- [ADR-0001: Three chunking strategies](docs/adr/0001-chunking-strategies.md)
-- [ADR-0002: Hybrid retrieval and rank fusion](docs/adr/0002-hybrid-retrieval-and-rrf.md)
-- [ADR-0003: Checking citations with a second model](docs/adr/0003-verified-citations-confidence-abstention.md)
-- [ADR-0004: Tuning when to decline](docs/adr/0004-tuned-abstention-policy.md)
-- [ADR-0005: Deployment](docs/adr/0005-deployment.md)
 
 ## License
 

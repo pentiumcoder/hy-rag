@@ -2,7 +2,7 @@
 
 The eval generates and verifies every question with all abstention rules switched off and
 records each signal. Any policy can then be scored without calling a model again, so the
-thresholds are tuned on data instead of picked by hand (ADR-0004).
+thresholds are tuned on data instead of picked by hand.
 
 A policy abstains at the first layer that fires:
 

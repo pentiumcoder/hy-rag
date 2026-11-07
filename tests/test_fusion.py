@@ -48,7 +48,7 @@ def test_ties_are_deterministic_and_empty_input_is_fine() -> None:
 
 
 def test_lopsided_weights_silence_the_weaker_retriever() -> None:
-    """Why the default is 0.5/0.5 (ADR-0002): at k=60 the top ranks differ by ~15%."""
+    """Why the default is 0.5/0.5: at k=60 the top ranks differ by ~15%."""
     dense = [f"d{i}" for i in range(1, 11)]
     rankings = {"dense": dense, "sparse": ["s1"]}
     lopsided = [c for c, _ in reciprocal_rank_fusion(rankings, {"dense": 0.7, "sparse": 0.3})]

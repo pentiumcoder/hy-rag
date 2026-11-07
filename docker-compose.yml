@@ -9,7 +9,7 @@
 # with the GPU file) and indexes the corpus; restarts take about 15 seconds.
 #
 # Chroma runs embedded in the API container, next to BM25, so a single process owns both
-# indexes (see docs/adr/0005-deployment.md).
+# indexes and keeps them in sync.
 
 name: hyrag
 

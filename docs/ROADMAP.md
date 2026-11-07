@@ -46,7 +46,7 @@ hy-rag is built in five phases. Each phase ends with a stable interface that the
 ## Phase 5: Dashboard and deployment ✅
 
 - [x] React dashboard: answers with clickable citations, score breakdowns, hybrid vs dense comparison, eval charts, document upload
-- [x] Docker Compose with the API (embedded Chroma, see ADR-0005), Ollama and the dashboard, plus a seed script and a GPU file
+- [x] Docker Compose with the API (Chroma embedded in the API), Ollama and the dashboard, plus a seed script and a GPU file
 - [x] Case study with evaluation results, and a demo script
 
 ## Beyond 1.0

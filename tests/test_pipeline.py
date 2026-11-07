@@ -262,7 +262,7 @@ def test_verifying_an_abstention_is_a_no_op(indexed: Settings) -> None:
 
 
 def test_the_judge_withdraws_an_answer_the_passages_do_not_support(indexed: Settings) -> None:
-    """Item 3 of ADR-0003: a near-miss passage scores well but does not answer the question."""
+    """A near-miss passage scores well but does not answer the question."""
     reply = "The Team plan costs $99 per month [1]."
     r = _pipeline(indexed, generator=ScriptedLLM([reply]), judge=_judge_says("NO")).ask(
         "How much does the Team plan cost?"

@@ -2,8 +2,8 @@
 
 Every (claim, citation) pair goes to the judge in **one** JSON call rather than one call per
 pair: on a local GPU each call costs seconds, and when the generator and judge do not both
-fit in VRAM each call can also mean a model swap (ADR-0003). Citations of passages that do
-not exist are rejected without asking the judge.
+fit in VRAM each call can also mean a model swap. Citations of passages that do not exist are
+rejected without asking the judge.
 """
 
 from __future__ import annotations

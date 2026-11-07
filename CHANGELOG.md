@@ -18,7 +18,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - `docker-compose.gpu.yml` switches to `qwen2.5:7b` and `llama3.1:8b` on an NVIDIA GPU.
 - `scripts/seed.py`, which indexes the corpus and pulls missing Ollama models on first boot. It is idempotent, so restarts take seconds.
 - CI jobs for the dashboard (types, tests, build) and for building both Docker images, plus Dependabot for npm and Docker.
-- `docs/case-study.md`, `docs/demo-script.md`, ADR-0005 on deployment, and a results-first README with an architecture diagram and screenshots.
+- `docs/case-study.md`, `docs/demo-script.md`, and a results-first README with an architecture diagram and screenshots.
 
 ### Fixed
 
@@ -45,7 +45,7 @@ All notable changes to this project are documented here. The format follows [Kee
   - `GET /health`
   - OpenAPI docs and CORS for the dashboard dev server
 - CI job running the offline evaluation on every pull request, failing if the best recall@5 drops below 85%.
-- Committed results in `eval/results/`, and ADR-0004 on the tuned abstention policy.
+- Committed results in `eval/results/`.
 
 ### Changed
 
@@ -70,7 +70,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - `hyrag ask` with a claims table, flagged sources, the confidence breakdown, timings and `--json` output.
 - `ExtractiveStubLLM`, a deterministic lexical generator and judge, so the whole pipeline runs offline in tests and CI.
 - Opt-in end-to-end tests against Ollama (`HYRAG_TEST_LLM=1 pytest -m llm`), including a planted hallucination the judge must flag.
-- ADR-0003 on batched, cross-family citation verification, confidence and abstention.
 
 ## [0.2.0] - 2026-10-28
 
@@ -83,7 +82,6 @@ All notable changes to this project are documented here. The format follows [Kee
 - `HybridRetriever.retrieve(query, mode, k)` with dense, sparse and hybrid modes, weighted Reciprocal Rank Fusion and a cross-encoder reranker (`Xenova/ms-marco-MiniLM-L-6-v2`). Every result reports its dense, BM25, RRF and rerank scores.
 - `hyrag ingest` and `hyrag search` CLI commands.
 - Opt-in end-to-end tests with the real local models (`HYRAG_TEST_MODELS=1 pytest -m models`).
-- ADR-0002 on hybrid retrieval and fusion weights.
 
 ### Changed
 
@@ -103,7 +101,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - `hyrag` CLI with `load` and `chunk` (including `--compare` and `--show`) commands.
 - Northwind Cloud sample corpus: 26 internal documents across all four formats, plus the generator for the PDFs.
 - CI on Python 3.11 to 3.13 (ruff, mypy strict, pytest with coverage), pre-commit hooks, Dependabot and community health files.
-- ADR-0001 on the chunking strategies, and the project roadmap.
+- The project roadmap.
 
 [Unreleased]: https://github.com/pentiumcoder/hy-rag/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/pentiumcoder/hy-rag/compare/v0.4.0...v1.0.0

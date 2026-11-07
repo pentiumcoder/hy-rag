@@ -214,8 +214,8 @@ class AnswerPipeline:
         After verification the answer is still withdrawn (and kept as ``draft_answer``) if
         the judge finds the passages do not answer the question and no sentence is
         supported, or if the verified confidence is below ``answer_threshold``. Retrieval
-        scores cannot tell a near-miss passage from an answering one (ADR-0003); the judge,
-        which reads the passages, can (ADR-0004).
+        scores cannot tell a near-miss passage from an answering one; the judge, which
+        reads the passages, can.
         """
         if response.abstained or response.answer is None:
             return response

@@ -43,6 +43,6 @@ hyrag eval --retrieval-only          # all 18 retrieval configs with the real mo
 hyrag eval                           # plus answers on 4 configs with Ollama, ~1 h on an 8 GB GPU
 ```
 
-The full run generates and verifies every answer with all abstention rules switched off and records every signal. It then replays abstention policies over the recorded runs to tune `abstain_threshold`, `answer_threshold` and the judge check without calling a model again (see [ADR-0004](../docs/adr/0004-tuned-abstention-policy.md)). LLM replies are cached, so a rerun after changing only scoring or policy code takes minutes.
+The full run generates and verifies every answer with all abstention rules switched off and records every signal. It then replays abstention policies over the recorded runs to tune `abstain_threshold`, `answer_threshold` and the judge check without calling a model again. LLM replies are cached, so a rerun after changing only scoring or policy code takes minutes.
 
 CI runs the offline evaluation on every pull request and fails if the best recall@5 drops below 85%.

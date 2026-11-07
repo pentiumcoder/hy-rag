@@ -26,7 +26,6 @@ The test suite runs fully offline with a deterministic fake embedder, so it need
 - **Commits** follow [Conventional Commits](https://www.conventionalcommits.org/): `feat(retrieval): ...`, `fix(ingestion): ...`, `docs: ...`, `test: ...`, `ci: ...`, `chore: ...`.
 - **Keep pull requests focused.** One logical change per PR, with tests.
 - **Measure retrieval changes.** If a change touches chunking, retrieval or generation, include before/after numbers from the evaluation suite in the PR description.
-- **Record design decisions.** Significant decisions get a short ADR in `docs/adr/`.
 
 ## Sample corpus
 

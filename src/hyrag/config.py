@@ -50,7 +50,7 @@ class Settings(BaseSettings):
     sparse_k: int = Field(default=10, ge=1)
     rrf_k: int = Field(default=60, ge=1)
     # Equal weights by default: with rrf_k=60, rank scores differ by only ~15% across the top
-    # 10, so even 0.7/0.3 would stop a BM25-only hit from outranking any dense hit (ADR-0002).
+    # 10, so even 0.7/0.3 would stop a BM25-only hit from outranking any dense hit.
     dense_weight: float = Field(default=0.5, ge=0)
     sparse_weight: float = Field(default=0.5, ge=0)
     fusion_top_n: int = Field(default=20, ge=1)
@@ -62,7 +62,8 @@ class Settings(BaseSettings):
     # Model names default per provider (see hyrag.llm.DEFAULT_MODELS) when left empty.
     llm_provider: Literal["ollama", "openai", "anthropic", "stub"] = "ollama"
     generator_model: str | None = None
-    # The judge defaults to a different model family than the generator (ADR-0003).
+    # The judge defaults to a different model family than the generator, so it doesn't share
+    # the generator's blind spots or go easy on its phrasing.
     judge_provider: Literal["ollama", "openai", "anthropic", "stub"] | None = None
     judge_model: str | None = None
     ollama_base_url: str = "http://localhost:11434"
@@ -77,7 +78,7 @@ class Settings(BaseSettings):
     verify_citations: bool = True
     # Below this retrieval confidence nothing is generated and the answer is a structured
     # abstention. Rerank logits map to [0, 1] with sigmoid((logit - center) / scale).
-    # 0.3 is the middle of the range that is equally good on the eval set (ADR-0004).
+    # 0.3 is the middle of the range that is equally good on the eval set.
     abstain_threshold: float = Field(default=0.3, ge=0, le=1)
     rerank_center: float = -4.0
     rerank_scale: float = Field(default=2.0, gt=0)
