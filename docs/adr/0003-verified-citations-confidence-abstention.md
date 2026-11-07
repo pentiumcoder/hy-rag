@@ -32,7 +32,7 @@ The hardware constraint matters too. The generator (4.7 GB) and the judge (4.9 G
    - Passages sit in `<passage id="n">` tags. With `[n] Source:` headers, the model confused the headers with the citations it was writing.
    - The example format uses placeholders, never real-looking facts.
    - If a list ends with a single citation group and no other line in the block has one, that group is copied to the block's other sentences. Those inherited citations still go to the judge, so a wrong inheritance is flagged rather than hidden.
-6. **Run the same pipeline offline.** `ExtractiveStubLLM` reads the real prompts. As a generator it copies the best-overlapping passage sentences; as a judge it labels each check by term overlap and requires every number in the claim to appear in the passage. Tests, CI and the Day 4 offline eval use it.
+6. **Run the same pipeline offline.** `ExtractiveStubLLM` reads the real prompts. As a generator it copies the best-overlapping passage sentences; as a judge it labels each check by term overlap and requires every number in the claim to appear in the passage. Tests, CI and the offline evaluation use it.
 
 ## Consequences
 

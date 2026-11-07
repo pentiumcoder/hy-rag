@@ -44,11 +44,11 @@ These are pooled over the 4 configurations and 55 questions in `eval/results/`:
 | policy | abstention precision / recall | answered correctly | answered wrongly | utility |
 |---|---|---|---|---|
 | no abstention at all | n/a | 161.5 | 41 | +0.361 |
-| Day 3: gate 0.2 + generator | 88.2% / 93.8% | 161.5 | 7 | +0.670 |
+| v0.3.0: gate 0.2 + generator | 88.2% / 93.8% | 161.5 | 7 | +0.670 |
 | + judge answerability check | 88.6% / 96.9% | 161.5 | 6 | +0.680 |
 | **tuned: gate 0.3 + generator + judge, no floor** | 88.6% / 96.9% | 161.5 | 6 | +0.680 |
 
-- **The generator does most of the work.** Under the Day 3 policy every near-miss case reached it, and it declined 22 of the 24. The off-topic questions never reached it. It also declined 4 answerable cases (two exact-term questions with semantic chunks, and the ambiguous A04 twice). That is why abstention precision is 88.6% rather than 100%.
+- **The generator does most of the work.** Under the v0.3.0 policy every near-miss case reached it, and it declined 22 of the 24. The off-topic questions never reached it. It also declined 4 answerable cases (two exact-term questions with semantic chunks, and the ambiguous A04 twice). That is why abstention precision is 88.6% rather than 100%.
 - **The judge check caught one more.** It was a refusal split over two lines ("The context does not cover / - which database ..."), which the claim parser read as a cited fact. The check is cheap insurance against parser and format misses, not a near-miss detector. On its own its AUROC is 0.74.
 - **The gate is flat.** Any value from 0.05 to 0.6 gives the same utility: it blocks the off-topic questions and nothing answerable. 0.3 is the middle of that range. One near-miss (retrieval 0.22) now stops at the gate instead of reaching the generator, which saves a generation call.
 - **No confidence floor helps.** Floors of 0.5 to 0.8 withdraw correct answers as fast as wrong ones. For example, a floor of 0.6 removes 1 wrong answer and 2 correct ones. `answer_threshold` stays 0.

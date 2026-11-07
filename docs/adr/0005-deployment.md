@@ -12,7 +12,7 @@ The project has to run with one command for someone evaluating it, on hardware w
 
 It also needs a dashboard and an API, and the models must not be baked into images. The Ollama image alone is 8.5 GB on disk, because it bundles the GPU libraries.
 
-The original plan listed four services: `api`, `chroma`, `ollama` and `frontend`.
+The obvious layout is four services: `api`, `chroma`, `ollama` and `frontend`.
 
 ## Decision
 

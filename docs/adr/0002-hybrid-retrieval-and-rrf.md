@@ -22,7 +22,7 @@ Neither retriever is enough on its own, and the two produce scores on incompatib
 
 ### Why not 0.7 / 0.3?
 
-The original plan weighted dense retrieval 0.7 and BM25 0.3. The arithmetic rules that out. With `k = 60`, rank 1 scores `1/61` and rank 10 scores `1/70`, only about 15% apart. Any weight ratio above about 1.15 therefore dominates the rank signal entirely:
+My first design weighted dense retrieval 0.7 and BM25 0.3. The arithmetic rules that out. With `k = 60`, rank 1 scores `1/61` and rank 10 scores `1/70`, only about 15% apart. Any weight ratio above about 1.15 therefore dominates the rank signal entirely:
 
 | dense / sparse weights | a BM25-only #1 hit outranks dense-only hits from rank… |
 |---|---|
