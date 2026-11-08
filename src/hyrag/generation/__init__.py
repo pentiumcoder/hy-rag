@@ -2,7 +2,12 @@
 
 from hyrag.generation.abstention import build_abstention, suggested_documents
 from hyrag.generation.claims import extract_claims, find_citations, split_sentences
-from hyrag.generation.confidence import citation_coverage, combine, retrieval_confidence
+from hyrag.generation.confidence import (
+    citation_coverage,
+    combine,
+    faithfulness,
+    retrieval_confidence,
+)
 from hyrag.generation.pipeline import AnswerPipeline, llm_from_settings
 from hyrag.generation.prompts import build_answer_messages, build_judge_messages
 from hyrag.generation.stub import ExtractiveStubLLM
@@ -19,6 +24,7 @@ __all__ = [
     "citation_coverage",
     "combine",
     "extract_claims",
+    "faithfulness",
     "find_citations",
     "label_claims",
     "llm_from_settings",

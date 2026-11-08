@@ -5,19 +5,22 @@
   -11 (unrelated) to +8 (direct answer), and the default center of -4 puts borderline
   passages near 0.5. Without rerank scores it falls back to the share of the question's key
   terms that appear in the passages.
-* **citation coverage** - the mean verdict over the answer's factual sentences
-  (supported 1, partial or unverified 0.5, unsupported or uncited 0).
+* **citation coverage** - how well the answer's citations hold up. Each factual sentence
+  scores the mean verdict over all of its citations (supported 1, partial or unverified 0.5,
+  unsupported 0), and an uncited sentence scores 0. A sentence with one good citation and two
+  wrong ones therefore scores 1/3, not 1: a wrong citation sends a reader to the wrong page.
 * **completeness** - the judge's rating of whether the answer covers the whole question.
 """
 
 from __future__ import annotations
 
 import math
+from collections import defaultdict
 from collections.abc import Sequence
 from typing import Literal
 
 from hyrag.index.tokenize import key_terms, tokenize
-from hyrag.models import Claim, Confidence, ScoredChunk
+from hyrag.models import CitationCheck, Claim, Confidence, ScoredChunk
 
 WEIGHTS = {"retrieval": 0.4, "citation_coverage": 0.4, "completeness": 0.2}
 CLAIM_SCORES = {
@@ -58,7 +61,26 @@ def retrieval_confidence(
     return (len(found) / total if total else 0.0), "lexical"
 
 
-def citation_coverage(claims: Sequence[Claim]) -> float:
+def citation_coverage(claims: Sequence[Claim], checks: Sequence[CitationCheck] = ()) -> float:
+    facts = [c for c in claims if c.kind == "fact"]
+    if not facts:
+        return 0.0
+    verdicts: dict[int, list[float]] = defaultdict(list)
+    for check in checks:
+        verdicts[check.claim].append(CLAIM_SCORES[check.label])
+
+    def score(claim: Claim) -> float:
+        if not claim.citations:
+            return 0.0
+        if verdicts[claim.index]:
+            return sum(verdicts[claim.index]) / len(verdicts[claim.index])
+        return CLAIM_SCORES[claim.label or "UNVERIFIED"]  # no checks given: best verdict only
+
+    return sum(score(c) for c in facts) / len(facts)
+
+
+def faithfulness(claims: Sequence[Claim]) -> float:
+    """Share of factual sentences backed by at least one of their citations (eval metric)."""
     facts = [c for c in claims if c.kind == "fact"]
     if not facts:
         return 0.0

@@ -65,7 +65,7 @@ class _Clock:
 
 
 class AnswerPipeline:
-    """Phase 3 contract: ``ask(query, overrides) -> AnswerResponse``.
+    """Answers a question from the indexed documents.
 
     1. Retrieve the top-k passages (hybrid by default).
     2. If retrieval confidence is below ``abstain_threshold``, return a structured abstention
@@ -242,7 +242,7 @@ class AnswerPipeline:
 
         confidence = combine(
             response.confidence.retrieval,
-            citation_coverage(claims),
+            citation_coverage(claims, verification.checks),
             completeness,
             response.confidence.retrieval_signal,
             answerability=verification.answerability,

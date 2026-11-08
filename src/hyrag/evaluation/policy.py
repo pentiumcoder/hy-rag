@@ -40,6 +40,7 @@ class GenerationRecord(BaseModel):
     abstain_reason: str | None = None
     confidence: float = 0.0
     citation_coverage: float = 0.0
+    faithfulness: float = 0.0  # share of sentences backed by at least one citation
     completeness: float = 0.0
     answerability: float | None = None
     any_supported: bool = False

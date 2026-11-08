@@ -85,7 +85,7 @@ def summarize_generation(
                 if answerable
                 else 0.0,
                 "key_fact_recall": round(mean([r.key_fact_recall or 0.0 for r in graded]), 4),
-                "faithfulness": round(mean([r.citation_coverage for r in shown]), 4),
+                "faithfulness": round(mean([r.faithfulness for r in shown]), 4),
                 "citation_accuracy": round(
                     sum(_CHECK_SCORES.get(k, 0.0) * n for k, n in checks.items()) / total_checks, 4
                 )

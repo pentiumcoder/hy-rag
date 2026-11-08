@@ -21,7 +21,7 @@ from hyrag.evaluation.dataset import GoldenQuestion
 from hyrag.evaluation.judge import CorrectnessJudge
 from hyrag.evaluation.metrics import evidence_ranks, key_fact_recall, recall_at_k, reciprocal_rank
 from hyrag.evaluation.policy import GenerationRecord
-from hyrag.generation import AnswerPipeline
+from hyrag.generation import AnswerPipeline, faithfulness
 from hyrag.index import IndexManager
 from hyrag.ingestion import load_corpus
 from hyrag.models import AnswerResponse, AskOverrides, ChunkStrategy, RetrievalMode
@@ -144,6 +144,7 @@ def _record(
         abstain_reason=draft.abstention.reason if draft.abstention else None,
         confidence=final.confidence.score,
         citation_coverage=final.confidence.citation_coverage,
+        faithfulness=faithfulness(final.claims),
         completeness=final.confidence.completeness,
         answerability=final.confidence.answerability,
         any_supported=any(c.label == "SUPPORTED" for c in final.claims),

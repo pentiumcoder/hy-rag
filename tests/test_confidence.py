@@ -120,3 +120,19 @@ def test_abstention_prefers_the_generators_own_explanation() -> None:
     covered = build_abstention("no_results", "none", "growth plan", contexts)
     assert covered.missing == ["No retrieved passage answers the question directly."]
     assert build_abstention("no_results", "none", "growth", []).suggested_documents == []
+
+
+def test_wrong_extra_citations_lower_coverage_but_not_faithfulness() -> None:
+    """A sentence backed by [1] but also citing two unrelated passages (seen in the dashboard)."""
+    from hyrag.generation.confidence import faithfulness
+    from hyrag.models import CitationCheck
+
+    claims = [Claim(index=1, text="a", citations=[1, 3, 4], label="SUPPORTED")]
+    checks = [
+        CitationCheck(claim=1, citation=1, label="SUPPORTED"),
+        CitationCheck(claim=1, citation=3, label="UNSUPPORTED"),
+        CitationCheck(claim=1, citation=4, label="UNSUPPORTED"),
+    ]
+    assert citation_coverage(claims, checks) == pytest.approx(1 / 3)
+    assert citation_coverage(claims) == 1.0  # without the checks only the best verdict is known
+    assert faithfulness(claims) == 1.0
