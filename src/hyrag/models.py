@@ -211,7 +211,7 @@ class Abstention(BaseModel):
 
 
 class AnswerResponse(BaseModel):
-    """Phase 3 contract: everything ``AnswerPipeline.ask`` knows about one question."""
+    """Everything ``AnswerPipeline.ask`` knows about one question."""
 
     query: str
     answer: str | None  # keeps the [n] markers; None when abstained

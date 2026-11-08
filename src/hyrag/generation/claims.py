@@ -19,6 +19,9 @@ _BULLET = re.compile(r"^\s*(?:[-*•+]|\d+[.)])\s+")
 _HEADING = re.compile(r"^\s*#+\s*")
 # Sentences about what the context lacks ("The context does not cover ...", "X is not
 # mentioned in the passages"). Small models often cite passages on these too.
+# TODO: a gap split over two lines ("The context does not cover" / "- which database ...")
+# is read as one gap line plus one cited fact. The judge's answerability check catches it in
+# the eval, but the parser should join a line that ends mid-sentence with the next bullet.
 _SOURCE = r"\b(?:context|passages?|documents?|documentation|sources?)\b"
 _GAP = re.compile(
     rf"{_SOURCE}.{{0,60}}?\b(?:does not|do not|doesn't|don't|did not)\b.{{0,30}}?"

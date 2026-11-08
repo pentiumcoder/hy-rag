@@ -23,7 +23,7 @@ class _Candidate:
 
 
 class HybridRetriever:
-    """Phase 2 contract: ``retrieve(query, mode, k) -> list[ScoredChunk]``.
+    """Finds the ``k`` best passages for a query, in dense, sparse or hybrid mode.
 
     * ``dense`` and ``sparse`` each fetch ``fusion_top_n`` candidates on their own, so
       every mode hands the reranker an equally deep pool and comparisons stay fair.

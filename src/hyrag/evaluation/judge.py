@@ -1,6 +1,6 @@
 """Answer correctness: does the answer say what the reference answer says?
 
-Citation checks (Phase 3) ask whether an answer is *faithful* to its passages. That says
+Citation checks ask whether an answer is *faithful* to its passages. That says
 nothing about whether it is *right*: a faithful answer built on the wrong passage is still
 wrong. Correctness compares the answer with the golden reference instead.
 """

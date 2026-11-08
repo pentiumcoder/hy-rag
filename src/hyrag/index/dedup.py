@@ -4,6 +4,10 @@ Internal docs copy-paste heavily (the same deploy-freeze paragraph lives in the 
 the release process). Indexing both wastes context slots: the top-5 fills with the same
 text twice. Each new chunk is compared with its nearest *indexed* neighbour and with chunks
 accepted earlier in the same batch; above the threshold it is skipped and reported.
+
+TODO: whichever copy is indexed first wins, which is just the order of the file paths. On the
+sample corpus that keeps the leave FAQ and drops the official PTO policy it summarises. A
+per-source priority (policy over FAQ) would pick the authoritative copy.
 """
 
 from __future__ import annotations
