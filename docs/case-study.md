@@ -1,6 +1,8 @@
 # Case study: checked answers over internal docs, on a laptop
 
-In short: on a 55-question test set, 97.5% of answer sentences are backed by the passage they cite, 83.9% of individual citations hold up, and 31 of 32 unanswerable questions are declined. It runs on 7B and 8B models on an 8 GB laptop GPU, so there's no per-query cost.
+In short: on a 55-question test set, 97.5% of answer sentences are backed by the passage they cite, 83.9% of individual citations hold up, and all 8 questions the docs can't answer are declined. It runs on 7B and 8B models on an 8 GB laptop GPU, so there's no per-query cost.
+
+One caveat up front: I wrote the test questions and the documents, so the questions use the documents' own wording. Treat these as best-case numbers.
 
 ## The problem
 
@@ -22,6 +24,8 @@ I also replaced the BM25 scoring in `rank_bm25`. Its idf gives zero weight to an
 
 Result: 84.0% recall@5 for dense search alone, 98.9% for hybrid with reranking.
 
+The less flattering part: BM25 on its own also gets 98.9%, and with semantic chunks it beats hybrid slightly (94.7% against 93.6%). On my test set the dense half adds nothing measurable, because the questions repeat the documents' words and keyword search is good at that. Whether dense search earns its place on paraphrased questions I haven't tested.
+
 ### Citations that point at the wrong passage
 
 Asked how many PTO days carry over, `qwen2.5:7b` gave the right answer, "up to 5", but cited a passage about taking time off during an on-call week. Anyone who clicked that citation would be misled even though the answer was right.
@@ -30,7 +34,9 @@ So a second model, `llama3.1:8b`, checks every sentence against the passage it c
 
 Two prompt fixes mattered as well. Labelling passages `<passage id="n">` instead of `[n] Source:` stopped the 7B model from confusing passage headers with its own citations. And a worked example in the prompt got copied into an unrelated answer ("Unused PTO expires on March 31", cited to a certificate runbook), so I replaced it with a placeholder template.
 
-Result: 97.5% of answer sentences are backed by the passage they cite, and the dashboard marks the others in red.
+Result: 97.5% of answer sentences are backed by the passage they cite, and the dashboard strikes through the citations that aren't.
+
+The checks also feed the confidence score. At first, a sentence counted as covered if its best citation held up, so an answer with a wrong extra citation could still show 100%. Now every checked citation counts, and one wrong citation out of two halves that sentence's share.
 
 ### Deciding when to decline
 
@@ -73,7 +79,7 @@ Embeddings and reranking run on the CPU through fastembed. Answering and checkin
 | correct answers, of those given | 91.3% |
 | sentences backed by their citation | 97.5% |
 | citation accuracy | 83.9% |
-| unanswerable questions declined | 31 of 32 |
+| unanswerable questions declined | 8 of 8 (31 of 32 over all four setups) |
 | time per answer on an 8 GB GPU | about 15 s, of which about 11 s is the checking step |
 
 ## What I'd do next

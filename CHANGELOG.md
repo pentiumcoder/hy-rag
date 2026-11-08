@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Fixed
+
+- The confidence score ignored wrong citations when a sentence had at least one right one, so an answer with struck-through citations could still show 100%. Citation coverage now averages every citation the checker looked at. The faithfulness metric in the evaluation keeps its old meaning.
+
+### Changed
+
+- New dashboard look in light and dark mode, using system fonts. The example questions are gone from the Ask tab, and the header shows the models and index size instead of the sample company's name.
+- The evaluation tab starts its recall axis at 0, says when BM25 alone matches hybrid search, and counts declined questions as "N of 8" instead of percentages over repeated runs.
+- The README and case study say who wrote the test set, that BM25 ties hybrid on it, and list known limitations.
+- Development status is now Beta.
+
+### Removed
+
+- The code of conduct, security policy, CODEOWNERS and the issue and pull request templates.
+
 ## [1.0.0] - 2026-10-31
 
 ### Added

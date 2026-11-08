@@ -9,14 +9,14 @@ Everything runs locally on Ollama. No API keys, no per-query cost.
 ![Python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Measured on a 55-question test set with `qwen2.5:7b` and `llama3.1:8b` on a laptop GPU:
+Measured on a 55-question test set with `qwen2.5:7b` and `llama3.1:8b` on a laptop GPU. I wrote the test questions and the sample docs myself, so these are best-case numbers; see [Known limitations](#known-limitations).
 
 | | |
 |---|---|
 | Evidence found in the top 5 results | 98.9% |
-| Correct answers, of the ones it gave | 91.3% |
+| Correct answers, of the ones it gave (graded by a model) | 91.3% |
 | Answer sentences backed by the passage they cite | 97.5% |
-| Unanswerable questions it declined to answer | 31 of 32 |
+| Questions the docs can't answer that it declined | 8 of 8 |
 
 ![Hybrid and dense-only search side by side on the query NW-4290](docs/images/compare.png)
 
@@ -50,7 +50,7 @@ Documents are split into sections and chunked one of three ways (fixed size, by 
 
 At query time both searches run, their rankings are merged with Reciprocal Rank Fusion, and a cross-encoder reranks the top 20. The answering model has to put a `[n]` after every sentence. A second model from a different family then checks each sentence against the passage it cites, all in one call, and also says whether the passages answer the question at all.
 
-The confidence score is `0.4 × retrieval + 0.4 × citation coverage + 0.2 × completeness`. Questions get declined at three points: when retrieval finds nothing relevant, when the answering model says the docs don't cover it, and when the checker finds the answer unsupported. The thresholds for those come from the test set, not from guesses.
+The confidence score is `0.4 × retrieval + 0.4 × citation coverage + 0.2 × completeness`. Citation coverage counts every citation the checker looked at, so a sentence that cites one right and one wrong passage gets half credit. Questions get declined at three points: when retrieval finds nothing relevant, when the answering model says the docs don't cover it, and when the checker finds the answer unsupported. The thresholds for those come from the test set, not from guesses.
 
 ## Running it
 
@@ -104,16 +104,18 @@ Retrieval, as the share of each question's evidence that shows up in the top 5:
 | fixed chunks + rerank | 93.6% | 97.9% | 97.9% |
 | semantic chunks + rerank | 92.5% | 94.7% | 93.6% |
 
-Reranking helps every setup, by 3 to 13 points. Dense search alone is clearly the weakest, especially on questions that need two documents. Splitting by headings beat splitting by topic shifts on these docs.
+Reranking helps every setup, by 3 to 13 points, and dense search alone is the weakest. But BM25 on its own does exactly as well as hybrid search here, and slightly better with semantic chunks. My test questions reuse a lot of the docs' wording, which suits keyword search, so on this test set the dense half adds nothing measurable. I kept it because real users paraphrase more than my questions do, but I haven't measured that. Splitting by headings beat splitting by topic shifts on these docs.
 
 Answers, graded against reference answers:
 
-| setup | correct | backed by citations | citation accuracy | answered | declined correctly / caught |
+| setup | correct | backed by citations | citation accuracy | answered | unanswerable declined |
 |---|---|---|---|---|---|
-| recursive, hybrid | **91.3%** | 97.5% | 83.9% | 97.9% | 88.9% / 100% |
-| recursive, dense | 89.1% | 96.0% | 83.9% | 97.9% | 88.9% / 100% |
-| fixed, hybrid | 87.2% | 96.3% | 86.8% | 100% | 100% / 100% |
-| semantic, hybrid | 83.3% | 94.9% | 81.8% | 95.7% | 77.8% / 87.5% |
+| recursive, hybrid | **91.3%** | 97.5% | 83.9% | 97.9% | 8 of 8 |
+| recursive, dense | 89.1% | 96.0% | 83.9% | 97.9% | 8 of 8 |
+| fixed, hybrid | 87.2% | 96.3% | 86.8% | 100% | 8 of 8 |
+| semantic, hybrid | 83.3% | 94.9% | 81.8% | 95.7% | 7 of 8 |
+
+The same 8 unanswerable questions are asked in every setup, so across the four setups that is 31 of 32 answers declined, not 32 different questions.
 
 Deciding when to decline was the hardest part. A question like "How much does the Team plan cost?" pulls up the pricing page with a high score, but there is no Team plan. No retrieval threshold can tell that apart from a real answer, so the answering model and the checker handle those cases. Across all 220 answers in the test runs:
 
@@ -125,9 +127,20 @@ Deciding when to decline was the hardest part. A question like "How much does th
 
 The test set is small, and the grading model makes mistakes too: when I went through its INCORRECT verdicts by hand, 3 of the 5 were wrong. Treat the numbers as a way to compare setups, not as exact scores.
 
+## Known limitations
+
+- **The test set is easy.** I wrote both the 26 sample documents and the 55 questions, so the questions use the documents' own words. Real questions would score lower, and they would probably favour hybrid search over BM25 more than mine do.
+- **Few near misses.** Only 6 distinct questions are of the "sounds answerable but isn't" kind, like asking for the price of a Team plan that doesn't exist. With semantic chunking one of them still gets through: the model calls the Growth plan the Team plan and the checker accepts it.
+- **The grader is noisy.** Correctness comes from `llama3.1:8b` comparing answers to reference answers, and it often marks right answers wrong.
+- **The confidence score doesn't separate right from wrong answers.** On the main setup it averages 93% for both. It's useful for spotting unsupported citations in a single answer, not as a filter.
+- **Refusals split over two lines** are parsed as a gap plus a cited fact. The checker usually catches it, but the parser should handle it (TODO in `src/hyrag/generation/claims.py`).
+- **Duplicate removal keeps the first copy it sees**, which on the sample docs is the leave FAQ rather than the official PTO policy (TODO in `src/hyrag/index/dedup.py`).
+- **It's slow.** About 15 seconds per answer on an 8 GB GPU, 11 of them spent checking citations while the two models swap in and out of memory.
+- **The system prompt names the sample company.** Point it at your own docs and the prompt still tells the model they belong to Northwind Cloud, until you edit `src/hyrag/generation/prompts.py`.
+
 ## Screenshots
 
-When the model cites a passage that doesn't support a sentence, the checker flags it and the citation is struck through:
+When the model cites a passage that doesn't support a sentence, the checker flags it, the citation is struck through and the citation part of the confidence score drops:
 
 ![An answer with two flagged citations](docs/images/answer.png)
 
@@ -138,6 +151,10 @@ A question the docs can't answer. It shows what it found, what's missing and whe
 The evaluation tab:
 
 ![The evaluation tab](docs/images/evaluation.png)
+
+The dashboard follows the system's dark mode:
+
+![The ask tab in dark mode](docs/images/dark.png)
 
 ## Project layout
 
