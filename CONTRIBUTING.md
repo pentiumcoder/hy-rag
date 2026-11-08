@@ -1,6 +1,6 @@
-# Contributing to hy-rag
+# Contributing
 
-Thanks for your interest! Issues and pull requests are welcome.
+Issues and pull requests are welcome.
 
 ## Development setup
 
