@@ -1,6 +1,6 @@
 {
-  "version": "0.4.0",
-  "generated_at": "2026-10-30 03:55 UTC",
+  "version": "1.0.0",
+  "generated_at": "2026-11-08 07:54 UTC",
   "mode": "local models",
   "golden": {
     "path": "eval/golden.jsonl",
@@ -339,8 +339,8 @@
         "abstention_recall": 1.0,
         "abstention_f1": 0.9412,
         "utility": 0.7273,
-        "confidence_correct": 0.9758,
-        "confidence_incorrect": 0.9904,
+        "confidence_correct": 0.9283,
+        "confidence_incorrect": 0.9332,
         "median_latency_s": null,
         "grader": "judge"
       },
@@ -357,8 +357,8 @@
         "abstention_recall": 1.0,
         "abstention_f1": 0.9412,
         "utility": 0.7091,
-        "confidence_correct": 0.9684,
-        "confidence_incorrect": 0.9654,
+        "confidence_correct": 0.9198,
+        "confidence_incorrect": 0.8987,
         "median_latency_s": null,
         "grader": "judge"
       },
@@ -375,8 +375,8 @@
         "abstention_recall": 1.0,
         "abstention_f1": 1.0,
         "utility": 0.6727,
-        "confidence_correct": 0.9785,
-        "confidence_incorrect": 0.937,
+        "confidence_correct": 0.9398,
+        "confidence_incorrect": 0.9169,
         "median_latency_s": null,
         "grader": "judge"
       },
@@ -393,8 +393,8 @@
         "abstention_recall": 0.875,
         "abstention_f1": 0.8235,
         "utility": 0.6091,
-        "confidence_correct": 0.9671,
-        "confidence_incorrect": 0.9544,
+        "confidence_correct": 0.9252,
+        "confidence_incorrect": 0.8866,
         "median_latency_s": null,
         "grader": "judge"
       }
@@ -405,7 +405,7 @@
         "retrieval_confidence": 0.9666,
         "generator_answered": 0.9581,
         "judge_answerability": 0.7418,
-        "final_confidence": 0.9852
+        "final_confidence": 0.9767
       },
       "ablation": [
         {
@@ -563,33 +563,33 @@
         },
         {
           "answer_threshold": 0.6,
-          "correct": 159.5,
+          "correct": 157.5,
           "wrong": 5.0,
-          "utility": 0.6795
+          "utility": 0.6705
         },
         {
           "answer_threshold": 0.65,
-          "correct": 159.5,
+          "correct": 156.5,
           "wrong": 5.0,
-          "utility": 0.6795
+          "utility": 0.6659
         },
         {
           "answer_threshold": 0.7,
-          "correct": 157.5,
+          "correct": 156.5,
           "wrong": 5.0,
-          "utility": 0.6705
+          "utility": 0.6659
         },
         {
           "answer_threshold": 0.75,
-          "correct": 157.5,
+          "correct": 156.5,
           "wrong": 5.0,
-          "utility": 0.6705
+          "utility": 0.6659
         },
         {
           "answer_threshold": 0.8,
-          "correct": 157.0,
+          "correct": 133.0,
           "wrong": 4.0,
-          "utility": 0.6773
+          "utility": 0.5682
         }
       ],
       "overall": {

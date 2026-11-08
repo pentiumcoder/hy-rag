@@ -1,6 +1,6 @@
 # Evaluation report
 
-Generated 2026-10-30 03:55 UTC in **local models** mode from `eval/golden.jsonl` (55 questions: 20 lookup, 12 multi-hop, 10 exact-term, 8 unanswerable, 5 ambiguous).
+Generated 2026-11-08 07:54 UTC in **local models** mode from `eval/golden.jsonl` (55 questions: 20 lookup, 12 multi-hop, 10 exact-term, 8 unanswerable, 5 ambiguous).
 
 Models: embedder `BAAI/bge-small-en-v1.5`, reranker `Xenova/ms-marco-MiniLM-L-6-v2`, generator `qwen2.5:7b`, judge `llama3.1:8b`.
 
@@ -49,7 +49,7 @@ How well each signal separates answerable from unanswerable questions (AUROC, 1.
 | retrieval confidence | 0.967 |
 | generator answered | 0.958 |
 | judge answerability | 0.742 |
-| final confidence | 0.985 |
+| final confidence | 0.977 |
 
 What each layer adds, pooled over all configurations. Utility counts a correct answer as +1 and a wrong one (including any answer to an unanswerable question) as -2, per question.
 
