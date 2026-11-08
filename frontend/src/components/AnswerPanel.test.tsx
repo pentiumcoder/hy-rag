@@ -31,8 +31,10 @@ describe("AnswerPanel", () => {
 
   it("shows verdicts, the confidence breakdown, every stage score and timings", async () => {
     render(<AnswerPanel response={ANSWER} idPrefix="t" />);
-    expect(screen.getByText("SUPPORTED")).toBeInTheDocument();
-    expect(screen.getByText("PARTIAL")).toBeInTheDocument();
+    expect(screen.getByText("✓ supported")).toBeInTheDocument();
+    expect(screen.getByText("~ partly supported")).toBeInTheDocument();
+    // each citation shows its own verdict, so the wrong one is visible next to the right one
+    expect(screen.getByRole("button", { name: "✗[3]" })).toHaveAttribute("title", "Passage 3: not supported");
     expect(screen.getByText(/\[3\] does not support this: about webhooks/)).toBeInTheDocument();
     expect(screen.getByTestId("confidence-score")).toHaveTextContent("86%");
     expect(screen.getByRole("meter", { name: "Citations" })).toHaveAttribute("aria-valuenow", "0.75");
@@ -47,7 +49,7 @@ describe("AnswerPanel", () => {
 
   it("shows an abstention with what was found, what is missing and the withdrawn draft", async () => {
     render(<AnswerPanel response={ABSTAINED} idPrefix="t" />);
-    expect(screen.getByText(/Answer withdrawn: not supported/)).toBeInTheDocument();
+    expect(screen.getByText(/Answer withdrawn: the passages don't support it/)).toBeInTheDocument();
     expect(screen.getByText("The context does not cover a Team plan.")).toBeInTheDocument();
     expect(screen.getByText("product/pricing-and-plans.md")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Show the withdrawn draft"));

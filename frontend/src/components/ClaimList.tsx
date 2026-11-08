@@ -1,4 +1,4 @@
-import { VERDICT_STYLES } from "../format";
+import { VERDICTS } from "../format";
 import type { CitationCheck, Claim } from "../types";
 
 interface Props {
@@ -7,45 +7,49 @@ interface Props {
   onCite: (n: number) => void;
 }
 
-/** Each sentence of the answer with the judge's verdict on its citations. */
+/** Each sentence of the answer, and what the judge said about each of its citations. */
 export function ClaimList({ claims, checks, onCite }: Props) {
   if (claims.length === 0) return null;
   return (
-    <ol className="space-y-2">
+    <ol className="space-y-3">
       {claims.map((claim) => {
-        const label = claim.label ?? "gap";
-        const failed = checks.filter((c) => c.claim === claim.index && c.label === "UNSUPPORTED");
+        const verdict = VERDICTS[claim.label ?? "gap"];
+        const mine = checks.filter((c) => c.claim === claim.index);
+        const failed = mine.filter((c) => c.label === "UNSUPPORTED");
         return (
-          <li key={claim.index} className="flex gap-3 text-sm">
-            <span
-              className={`h-fit shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide ${VERDICT_STYLES[label]}`}
-            >
-              {label === "gap" ? "NOT COVERED" : label}
+          <li key={claim.index} className="grid grid-cols-[8.5rem_1fr] gap-3 text-sm">
+            <span className={verdict.tone}>
+              {verdict.mark} {verdict.text}
             </span>
             <div className="min-w-0">
-              <p className="text-slate-700 dark:text-slate-200">
+              <p>
                 {claim.text}{" "}
-                {claim.citations.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => onCite(n)}
-                    className="font-mono text-xs text-indigo-600 hover:underline dark:text-indigo-400"
-                  >
-                    [{n}]
-                  </button>
-                ))}
+                {claim.citations.map((n) => {
+                  const check = mine.find((c) => c.citation === n);
+                  const v = check ? VERDICTS[check.label] : VERDICTS.UNVERIFIED;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => onCite(n)}
+                      title={`Passage ${n}: ${v.text}`}
+                      className={`mr-1 font-mono text-xs hover:underline ${v.tone}`}
+                    >
+                      {v.mark}[{n}]
+                    </button>
+                  );
+                })}
                 {claim.inherited && (
                   <span
-                    className="ml-1 text-xs text-slate-400"
+                    className="text-xs text-muted"
                     title="The model cited only the end of this list; the citation was applied to each line and still checked"
                   >
-                    (citation from list end)
+                    (citation from the end of the list)
                   </span>
                 )}
               </p>
               {failed.map((c) => (
-                <p key={c.citation} className="text-xs text-rose-600 dark:text-rose-400">
+                <p key={c.citation} className="text-xs text-bad">
                   [{c.citation}] does not support this{c.reason ? `: ${c.reason}` : ""}
                 </p>
               ))}

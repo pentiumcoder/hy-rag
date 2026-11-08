@@ -13,11 +13,11 @@ interface Props {
 export const passageId = (prefix: string, n: number) => `${prefix}-passage-${n}`;
 
 function Stage({ score, rank, digits }: { score: number | null; rank: number | null; digits: number }) {
-  if (score === null) return <span className="text-slate-400">–</span>;
+  if (score === null) return <span className="text-muted">–</span>;
   return (
-    <span className="tabular-nums">
+    <span className="font-mono text-xs">
       {num(score, digits)}
-      {rank !== null && <span className="ml-1 text-xs text-slate-400">#{rank}</span>}
+      {rank !== null && <span className="ml-1 text-muted">#{rank}</span>}
     </span>
   );
 }
@@ -36,20 +36,20 @@ export function ChunkTable({ contexts, idPrefix, cited, flagged, highlight }: Pr
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <thead className="text-xs text-muted">
           <tr>
-            <th className="py-2 pr-3">#</th>
-            <th className="py-2 pr-3">Source</th>
-            <th className="py-2 pr-3 text-right" title="Cosine similarity and rank from dense search">
+            <th className="py-2 pr-3 font-normal">#</th>
+            <th className="py-2 pr-3 font-normal">Source</th>
+            <th className="py-2 pr-3 text-right font-normal" title="Cosine similarity and rank from dense search">
               Dense
             </th>
-            <th className="py-2 pr-3 text-right" title="BM25 score and rank from keyword search">
+            <th className="py-2 pr-3 text-right font-normal" title="BM25 score and rank from keyword search">
               BM25
             </th>
-            <th className="py-2 pr-3 text-right" title="Reciprocal Rank Fusion score">
+            <th className="py-2 pr-3 text-right font-normal" title="Reciprocal Rank Fusion score">
               RRF
             </th>
-            <th className="py-2 text-right" title="Cross-encoder logit (final order)">
+            <th className="py-2 text-right font-normal" title="Cross-encoder logit (final order)">
               Rerank
             </th>
           </tr>
@@ -62,19 +62,15 @@ export function ChunkTable({ contexts, idPrefix, cited, flagged, highlight }: Pr
               <tr
                 key={`${n}-${highlight?.n === n ? highlight.seq : 0}`}
                 id={passageId(idPrefix, n)}
-                className={`border-t border-slate-200 align-top dark:border-slate-800 ${
+                className={`border-t border-line align-top ${
                   highlight?.n === n ? "flash" : ""
                 }`}
               >
                 <td className="py-2 pr-3 font-mono text-xs">
                   <span
-                    className={`rounded px-1 ${
-                      flagged.has(n)
-                        ? "bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300"
-                        : cited.has(n)
-                          ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300"
-                          : "text-slate-400"
-                    }`}
+                    className={
+                      flagged.has(n) ? "text-bad" : cited.has(n) ? "text-accent" : "text-muted"
+                    }
                   >
                     [{n}]
                   </span>
@@ -86,14 +82,14 @@ export function ChunkTable({ contexts, idPrefix, cited, flagged, highlight }: Pr
                     aria-expanded={isOpen}
                     className="text-left hover:underline"
                   >
-                    <span className="font-medium">{sc.chunk.source}</span>
-                    {sc.chunk.page !== null && <span className="text-slate-400"> p.{sc.chunk.page}</span>}
-                    <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    <span>{sc.chunk.source}</span>
+                    {sc.chunk.page !== null && <span className="text-muted"> p.{sc.chunk.page}</span>}
+                    <span className="block text-xs text-muted">
                       {shortSection(sc.chunk.section_heading)}
                     </span>
                   </button>
                   {isOpen && (
-                    <p className="mt-2 whitespace-pre-wrap rounded bg-slate-100 p-2 text-xs leading-5 text-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                    <p className="mt-2 whitespace-pre-wrap border-l-2 border-line pl-3 font-serif text-sm leading-6">
                       {sc.chunk.text}
                     </p>
                   )}
@@ -104,8 +100,8 @@ export function ChunkTable({ contexts, idPrefix, cited, flagged, highlight }: Pr
                 <td className="py-2 pr-3 text-right">
                   <Stage score={sc.sparse_score} rank={sc.sparse_rank} digits={2} />
                 </td>
-                <td className="py-2 pr-3 text-right tabular-nums">{num(sc.rrf_score, 4)}</td>
-                <td className="py-2 text-right tabular-nums">{num(sc.rerank_score, 2)}</td>
+                <td className="py-2 pr-3 text-right font-mono text-xs">{num(sc.rrf_score, 4)}</td>
+                <td className="py-2 text-right font-mono text-xs">{num(sc.rerank_score, 2)}</td>
               </tr>
             );
           })}

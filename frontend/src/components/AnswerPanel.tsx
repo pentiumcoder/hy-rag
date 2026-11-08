@@ -15,10 +15,8 @@ interface Props {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        {title}
-      </h3>
+    <section className="border-t border-line pt-3">
+      <h3 className="mb-2 text-sm font-medium text-muted">{title}</h3>
       {children}
     </section>
   );
@@ -28,67 +26,49 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function AnswerPanel({ response: r, idPrefix, title }: Props) {
   const [highlight, setHighlight] = useState<{ n: number; seq: number } | null>(null);
   const cited = useMemo(() => new Set(r.citations.map((c) => c.number)), [r.citations]);
-  const flagged = useMemo(
-    () => new Set(r.citations.filter((c) => c.flagged).map((c) => c.number)),
-    [r.citations],
-  );
+  const flagged = useMemo(() => new Set(r.citations.filter((c) => c.flagged).map((c) => c.number)), [r.citations]);
 
   const cite = (n: number) => {
     setHighlight((prev) => ({ n, seq: (prev?.seq ?? 0) + 1 }));
-    document
-      .getElementById(passageId(idPrefix, n))
-      ?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    document.getElementById(passageId(idPrefix, n))?.scrollIntoView?.({ behavior: "smooth", block: "center" });
   };
 
   return (
-    <div className="space-y-4" data-testid={`answer-${idPrefix}`}>
+    <div className="@container min-w-0 space-y-6" data-testid={`answer-${idPrefix}`}>
       {title && (
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          {title}
-          <span className="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-xs font-normal dark:bg-slate-800">
+        <h2 className="flex items-baseline gap-3">
+          <span className="font-serif text-lg">{title}</span>
+          <span className="font-mono text-xs text-muted">
             {r.mode} / {r.strategy}
           </span>
         </h2>
       )}
-      <div className="grid gap-4 lg:grid-cols-[1fr_16rem]">
-        <Section title="Answer">
+      <div className="grid gap-x-10 gap-y-6 @2xl:grid-cols-[minmax(0,1fr)_15rem]">
+        <div>
           {r.abstained && r.abstention ? (
             <AbstentionPanel abstention={r.abstention} />
           ) : (
-            <AnswerText
-              text={r.answer ?? ""}
-              contextCount={r.contexts.length}
-              flagged={flagged}
-              onCite={cite}
-            />
+            <AnswerText text={r.answer ?? ""} contextCount={r.contexts.length} flagged={flagged} onCite={cite} />
           )}
           {r.warnings.length > 0 && (
-            <ul className="mt-3 space-y-1 text-xs text-amber-700 dark:text-amber-400">
+            <ul className="mt-4 space-y-1 text-xs text-warn">
               {r.warnings.map((w) => (
-                <li key={w}>⚠ {w}</li>
+                <li key={w}>{w}</li>
               ))}
             </ul>
           )}
-        </Section>
-        <Section title="Confidence">
-          <ConfidenceBars confidence={r.confidence} />
-        </Section>
+        </div>
+        <ConfidenceBars confidence={r.confidence} />
       </div>
       {r.claims.length > 0 && (
         <Section title="Citation checks">
           <ClaimList claims={r.claims} checks={r.checks} onCite={cite} />
         </Section>
       )}
-      <Section title={`Retrieved passages (${r.contexts.length})`}>
-        <ChunkTable
-          contexts={r.contexts}
-          idPrefix={idPrefix}
-          cited={cited}
-          flagged={flagged}
-          highlight={highlight}
-        />
+      <Section title={`Passages (${r.contexts.length})`}>
+        <ChunkTable contexts={r.contexts} idPrefix={idPrefix} cited={cited} flagged={flagged} highlight={highlight} />
       </Section>
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="font-mono text-xs text-muted">
         {[
           r.generator && `generator ${r.generator}`,
           r.judge && `judge ${r.judge}`,

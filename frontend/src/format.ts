@@ -12,20 +12,21 @@ export const seconds = (ms: number | undefined): string =>
 export const shortSection = (section: string | null): string =>
   section ? (section.split(" > ").at(-1) ?? section) : "";
 
-export const VERDICT_STYLES: Record<ClaimLabel | "gap", string> = {
-  SUPPORTED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  PARTIAL: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-  UNVERIFIED: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-  UNSUPPORTED: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-  UNCITED: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
-  gap: "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400",
+/** How each verdict reads in the UI: a symbol, a word and a colour, not a pill. */
+export const VERDICTS: Record<ClaimLabel | "gap", { mark: string; text: string; tone: string }> = {
+  SUPPORTED: { mark: "✓", text: "supported", tone: "text-ok" },
+  PARTIAL: { mark: "~", text: "partly supported", tone: "text-warn" },
+  UNVERIFIED: { mark: "?", text: "not checked", tone: "text-muted" },
+  UNSUPPORTED: { mark: "✗", text: "not supported", tone: "text-bad" },
+  UNCITED: { mark: "✗", text: "no citation", tone: "text-bad" },
+  gap: { mark: "–", text: "not in the documents", tone: "text-muted" },
 };
 
 export const ABSTENTION_TITLES: Record<string, string> = {
   no_results: "Nothing was retrieved",
-  low_retrieval_confidence: "Off-topic for these documents",
+  low_retrieval_confidence: "No passage matched this question well enough",
   insufficient_context: "The documents don't answer this",
-  unanswerable: "Answer withdrawn: not supported by the documents",
+  unanswerable: "Answer withdrawn: the passages don't support it",
   low_answer_confidence: "Answer withdrawn: confidence too low",
 };
 

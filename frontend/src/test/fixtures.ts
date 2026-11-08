@@ -90,13 +90,14 @@ export const SUMMARY: EvalSummary = {
   version: "0.4.0",
   generated_at: "2026-10-30 04:00 UTC",
   mode: "local models",
-  golden: { path: "eval/golden.jsonl", questions: 55, by_type: { lookup: 20, multi_hop: 12 } },
+  golden: { path: "eval/golden.jsonl", questions: 55, by_type: { lookup: 20, multi_hop: 12, unanswerable: 8 } },
   models: { embedder: "BAAI/bge-small-en-v1.5", reranker: null, generator: "qwen2.5:7b", judge: "llama3.1:8b" },
   retrieval: {
     k: 5,
     best: "recursive/hybrid+rerank",
     configs: [
       { config: "recursive/hybrid+rerank", strategy: "recursive", mode: "hybrid", rerank: true, questions: 47, recall_at_1: 0.68, recall_at_5: 0.989, mrr: 0.876, recall_at_5_by_type: {} },
+      { config: "recursive/sparse+rerank", strategy: "recursive", mode: "sparse", rerank: true, questions: 47, recall_at_1: 0.68, recall_at_5: 0.989, mrr: 0.876, recall_at_5_by_type: {} },
       { config: "recursive/dense+rerank", strategy: "recursive", mode: "dense", rerank: true, questions: 47, recall_at_1: 0.68, recall_at_5: 0.968, mrr: 0.869, recall_at_5_by_type: {} },
       { config: "recursive/dense", strategy: "recursive", mode: "dense", rerank: false, questions: 47, recall_at_1: 0.6, recall_at_5: 0.84, mrr: 0.78, recall_at_5_by_type: {} },
     ],

@@ -1,22 +1,77 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+/* Colours live in CSS variables so light and dark are one switch, not a dark: class on
+   every element. Tailwind utilities (bg-paper, text-muted, border-line...) read them. */
+:root {
+  --paper: #f6f4ef;
+  --surface: #fffdf8;
+  --ink: #22201b;
+  --muted: #6b665c;
+  --line: #dcd6ca;
+  --accent: #a3471b;
+  --accent-soft: #f4e3d9;
+  --ok: #2f6b3a;
+  --ok-soft: #e3efe2;
+  --warn: #8a5a00;
+  --warn-soft: #f6ecd4;
+  --bad: #a12a2a;
+  --bad-soft: #f6dfdc;
+  --mark: #ffe58a;
+  color-scheme: light;
 }
 
-:root {
-  color-scheme: light dark;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1b1a17;
+    --surface: #23221e;
+    --ink: #ebe6db;
+    --muted: #a39d90;
+    --line: #3a3832;
+    --accent: #e2855a;
+    --accent-soft: #3a2a20;
+    --ok: #8cc795;
+    --ok-soft: #22311f;
+    --warn: #e0b45c;
+    --warn-soft: #362c17;
+    --bad: #ef8f86;
+    --bad-soft: #3a2221;
+    --mark: #6b5718;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+
+  /* System fonts only, so nothing is named here that the page doesn't have. */
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* A citation the user just jumped to. */
+/* The passage a citation just jumped to. */
 @keyframes flash {
   from {
-    background-color: rgb(250 204 21 / 0.45);
+    background-color: var(--mark);
   }
   to {
     background-color: transparent;

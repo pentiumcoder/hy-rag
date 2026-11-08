@@ -17,8 +17,10 @@ describe("EvalView", () => {
     render(<EvalView />);
     expect(await screen.findByText("recursive/hybrid")).toBeInTheDocument();
     expect(screen.getByText("91.3%")).toBeInTheDocument();
-    expect(screen.getByText(/55 golden questions/)).toBeInTheDocument();
-    expect(screen.getByText(/retrieval gate 0.3, judge check on/)).toBeInTheDocument();
+    expect(screen.getByText(/55 test questions/)).toBeInTheDocument();
+    expect(screen.getByText(/written by the same person/)).toBeInTheDocument();
+    expect(screen.getByText(/BM25 on its own does as well as hybrid/)).toBeInTheDocument();
+    expect(screen.getByText("8 of 8")).toBeInTheDocument();
     expect(screen.getByTestId("retrieval-chart")).toBeInTheDocument();
     expect(screen.getByTestId("ablation-chart")).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("with cross-encoder rerank"));
@@ -97,7 +99,7 @@ describe("App", () => {
       "GET /v1/documents": () => ({ body: DOCS }),
     });
     render(<App />);
-    expect(await screen.findByText(/qwen2.5:7b · judge llama3.1:8b/)).toBeInTheDocument();
+    expect(await screen.findByText(/qwen2.5:7b answers, llama3.1:8b checks · 86 passages/)).toBeInTheDocument();
     expect(screen.getByLabelText("Question")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: "Documents" }));
     expect(await screen.findByText("2 documents")).toBeInTheDocument();
@@ -108,6 +110,6 @@ describe("App", () => {
     mockApi({});
     render(<App />);
     const header = screen.getByRole("banner");
-    expect(await within(header).findByText("API unreachable")).toBeInTheDocument();
+    expect(await within(header).findByText("API not reachable")).toBeInTheDocument();
   });
 });

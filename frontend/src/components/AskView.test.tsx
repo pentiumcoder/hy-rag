@@ -33,7 +33,7 @@ describe("AskView", () => {
     render(<AskView />);
     await userEvent.click(screen.getByLabelText("Compare hybrid vs dense"));
     expect(screen.getByLabelText("Retrieval mode")).toBeDisabled();
-    await userEvent.click(screen.getByRole("button", { name: /How many PTO days/ }));
+    await userEvent.type(screen.getByLabelText("Question"), "How many PTO days carry over?{Enter}");
 
     expect(await screen.findByText(/Answer from dense/)).toBeInTheDocument();
     expect(screen.getByText(/Answer from hybrid/)).toBeInTheDocument();

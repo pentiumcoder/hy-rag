@@ -49,22 +49,18 @@ export function DocumentsView() {
           setDragging(false);
           void upload([...e.dataTransfer.files]);
         }}
-        className={`rounded-xl border-2 border-dashed p-8 text-center transition ${
-          dragging
-            ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/40"
-            : "border-slate-300 dark:border-slate-700"
-        }`}
+        className={`border border-dashed p-6 ${dragging ? "border-accent bg-accent-soft" : "border-line"}`}
       >
-        <p className="text-sm text-slate-600 dark:text-slate-300">
+        <p className="text-sm text-muted">
           Drop Markdown, text, HTML or PDF files here, or{" "}
           <button
             type="button"
             onClick={() => input.current?.click()}
-            className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            className="text-accent underline-offset-2 hover:underline"
           >
             choose files
           </button>
-          . They are chunked, deduplicated, embedded and indexed for every strategy.
+          . Each file is split into passages and added to the search indexes.
         </p>
         <input
           ref={input}
@@ -75,23 +71,23 @@ export function DocumentsView() {
           className="hidden"
           onChange={(e) => void upload([...(e.target.files ?? [])])}
         />
-        {uploading && <p className="mt-3 text-sm text-slate-500">Indexing…</p>}
+        {uploading && <p className="mt-2 text-sm text-muted">Indexing…</p>}
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
+        <p role="alert" className="text-sm text-bad">
           {error}
         </p>
       )}
 
       {report && (
-        <div className="rounded-xl border border-emerald-300 bg-emerald-50 p-4 text-sm dark:border-emerald-800 dark:bg-emerald-950/40">
-          <p className="font-medium text-emerald-900 dark:text-emerald-200">
+        <div className="border-l-2 border-ok pl-3 text-sm">
+          <p>
             {report.added.length} added, {report.updated.length} updated,{" "}
             {report.unchanged.length} unchanged
             {report.skipped.length > 0 && `, ${report.skipped.length} skipped (no text)`}
           </p>
-          <p className="mt-1 text-emerald-800/80 dark:text-emerald-200/80">
+          <p className="mt-1 text-muted">
             {report.indexes
               .map((i) => `${i.strategy}: +${i.added} chunks (${i.chunks} total, ${i.duplicates} duplicates)`)
               .join(" · ")}
@@ -99,28 +95,28 @@ export function DocumentsView() {
         </div>
       )}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <h3 className="mb-3 text-sm font-semibold">{docs ? `${docs.length} documents` : "Documents"}</h3>
+      <section className="border-t border-line pt-4">
+        <h3 className="mb-3 font-serif text-lg">{docs ? `${docs.length} documents` : "Documents"}</h3>
         {docs && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <thead className="text-left text-xs text-muted">
                 <tr>
-                  <th className="py-2 pr-3">Source</th>
-                  <th className="py-2 pr-3">Title</th>
-                  <th className="py-2 pr-3">Format</th>
-                  <th className="py-2 pr-3 text-right">Sections</th>
-                  <th className="py-2 text-right">Characters</th>
+                  <th className="py-2 pr-3 font-normal">Source</th>
+                  <th className="py-2 pr-3 font-normal">Title</th>
+                  <th className="py-2 pr-3 font-normal">Format</th>
+                  <th className="py-2 pr-3 text-right font-normal">Sections</th>
+                  <th className="py-2 text-right font-normal">Characters</th>
                 </tr>
               </thead>
               <tbody>
                 {docs.map((d) => (
-                  <tr key={d.doc_id} className="border-t border-slate-200 dark:border-slate-800">
+                  <tr key={d.doc_id} className="border-t border-line">
                     <td className="py-2 pr-3 font-mono text-xs">{d.source}</td>
                     <td className="py-2 pr-3">{d.title}</td>
-                    <td className="py-2 pr-3 uppercase text-slate-500">{d.format}</td>
-                    <td className="py-2 pr-3 text-right tabular-nums">{d.sections}</td>
-                    <td className="py-2 text-right tabular-nums">{d.chars.toLocaleString()}</td>
+                    <td className="py-2 pr-3 text-muted">{d.format}</td>
+                    <td className="py-2 pr-3 text-right font-mono text-xs">{d.sections}</td>
+                    <td className="py-2 text-right font-mono text-xs">{d.chars.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

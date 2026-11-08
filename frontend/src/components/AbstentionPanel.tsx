@@ -3,52 +3,50 @@ import type { Abstention } from "../types";
 
 export function AbstentionPanel({ abstention }: { abstention: Abstention }) {
   return (
-    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
-      <h3 className="font-semibold text-amber-900 dark:text-amber-200">
-        {ABSTENTION_TITLES[abstention.reason] ?? "No confident answer"}
-      </h3>
-      <p className="mt-1 text-sm text-amber-900/80 dark:text-amber-100/80">{abstention.message}</p>
-      <dl className="mt-3 space-y-2 text-sm">
+    <div className="border-l-2 border-warn pl-4">
+      <h3 className="font-serif text-lg">{ABSTENTION_TITLES[abstention.reason] ?? "No answer"}</h3>
+      <p className="mt-1 text-sm text-muted">{abstention.message}</p>
+      <dl className="mt-4 grid grid-cols-[8rem_1fr] gap-x-3 gap-y-2 text-sm">
         {abstention.found.length > 0 && (
-          <div>
-            <dt className="font-medium text-slate-700 dark:text-slate-200">Found</dt>
-            {abstention.found.map((f) => (
-              <dd key={f} className="text-slate-600 dark:text-slate-300">
-                {f}
-              </dd>
-            ))}
-          </div>
+          <>
+            <dt className="text-muted">Found</dt>
+            <dd>
+              {abstention.found.map((f) => (
+                <p key={f}>{f}</p>
+              ))}
+            </dd>
+          </>
         )}
         {abstention.missing.length > 0 && (
-          <div>
-            <dt className="font-medium text-slate-700 dark:text-slate-200">Missing</dt>
-            {abstention.missing.map((m) => (
-              <dd key={m} className="text-slate-600 dark:text-slate-300">
-                {m}
-              </dd>
-            ))}
-          </div>
+          <>
+            <dt className="text-muted">Missing</dt>
+            <dd>
+              {abstention.missing.map((m) => (
+                <p key={m}>{m}</p>
+              ))}
+            </dd>
+          </>
         )}
         {abstention.suggested_documents.length > 0 && (
-          <div>
-            <dt className="font-medium text-slate-700 dark:text-slate-200">Closest documents</dt>
-            {abstention.suggested_documents.map((d) => (
-              <dd key={d.source} className="text-slate-600 dark:text-slate-300">
-                {d.source}
-                {d.section_heading && (
-                  <span className="text-slate-400"> › {shortSection(d.section_heading)}</span>
-                )}
-              </dd>
-            ))}
-          </div>
+          <>
+            <dt className="text-muted">Closest documents</dt>
+            <dd>
+              {abstention.suggested_documents.map((d) => (
+                <p key={d.source}>
+                  {d.source}
+                  {d.section_heading && (
+                    <span className="text-muted"> › {shortSection(d.section_heading)}</span>
+                  )}
+                </p>
+              ))}
+            </dd>
+          </>
         )}
       </dl>
       {abstention.draft_answer && (
-        <details className="mt-3 text-sm">
-          <summary className="cursor-pointer text-slate-600 dark:text-slate-300">
-            Show the withdrawn draft
-          </summary>
-          <p className="mt-2 whitespace-pre-wrap rounded bg-white/60 p-2 text-slate-600 line-through decoration-slate-400 dark:bg-slate-900/60 dark:text-slate-400">
+        <details className="mt-4 text-sm">
+          <summary className="cursor-pointer text-muted">Show the withdrawn draft</summary>
+          <p className="mt-2 whitespace-pre-wrap font-serif text-muted line-through">
             {abstention.draft_answer}
           </p>
         </details>

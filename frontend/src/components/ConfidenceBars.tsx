@@ -12,7 +12,7 @@ const PARTS: { key: keyof Confidence; label: string; weight: number; hint: strin
     key: "citation_coverage",
     label: "Citations",
     weight: 0.4,
-    hint: "Share of sentences whose cited passage supports them (judge)",
+    hint: "How many of each sentence's citations hold up when checked; wrong ones count against it",
   },
   {
     key: "completeness",
@@ -23,50 +23,50 @@ const PARTS: { key: keyof Confidence; label: string; weight: number; hint: strin
 ];
 
 function tone(value: number): string {
-  if (value >= 0.75) return "bg-emerald-500";
-  if (value >= 0.5) return "bg-amber-500";
-  return "bg-rose-500";
+  if (value >= 0.75) return "bg-ok";
+  if (value >= 0.5) return "bg-warn";
+  return "bg-bad";
 }
 
 export function ConfidenceBars({ confidence }: { confidence: Confidence }) {
   return (
-    <div className="space-y-2" aria-label="Confidence breakdown">
-      <div className="flex items-baseline justify-between">
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">Confidence</span>
-        <span className="text-2xl font-semibold tabular-nums" data-testid="confidence-score">
+    <div className="space-y-3 text-sm" aria-label="Confidence breakdown">
+      <p className="flex items-baseline justify-between">
+        <span className="text-muted">Confidence</span>
+        <span className="font-serif text-3xl tabular-nums" data-testid="confidence-score">
           {pct(confidence.score)}
         </span>
-      </div>
+      </p>
       {PARTS.map(({ key, label, weight, hint }) => {
         const value = confidence[key] as number;
         return (
           <div key={key} title={hint}>
-            <div className="mb-0.5 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+            <p className="flex justify-between text-xs text-muted">
               <span>
-                {label} <span className="opacity-70">× {weight}</span>
+                {label} × {weight}
               </span>
-              <span className="tabular-nums">{pct(value)}</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800">
+              <span className="font-mono">{pct(value)}</span>
+            </p>
+            <div className="mt-1 h-1 bg-line">
               <div
                 role="meter"
                 aria-label={label}
                 aria-valuemin={0}
                 aria-valuemax={1}
                 aria-valuenow={value}
-                className={`h-1.5 rounded-full ${tone(value)}`}
+                className={`h-1 ${tone(value)}`}
                 style={{ width: pct(value) }}
               />
             </div>
           </div>
         );
       })}
-      <p className="text-xs text-slate-500 dark:text-slate-400">
+      <p className="text-xs text-muted">
         Retrieval signal: {confidence.retrieval_signal}
         {confidence.answerability !== null &&
-          ` · judge says the passages answer it: ${
+          `. Judge says the passages answer it: ${
             confidence.answerability === 1 ? "yes" : confidence.answerability === 0 ? "no" : "partly"
-          }`}
+          }.`}
       </p>
     </div>
   );
